@@ -1,0 +1,27 @@
+---
+import Layout from "../../layouts/Layout.astro";
+import { BlogService } from "../../services/BlogService";
+
+export async function getStaticPaths() {
+  const blogService = new BlogService();
+  const publishedPosts = (await blogService.fetchAllPosts()).filterPublished().getPosts();
+
+  return publishedPosts.map((entry) => ({
+    params: { slug: entry.slug },
+    props: { entry },
+  }));
+}
+
+const { entry } = Astro.props;
+const { Content } = await entry.render();
+---
+
+<Layout title={entry.data.title}>
+  <article class="container mx-auto px-4 py-12">
+    <h1 class="text-4xl font-bold mb-4">{entry.data.title}</h1>
+    <p class="text-gray-400 mb-8">{entry.data.date} | {entry.data.category}</p>
+    <div class="prose prose-invert max-w-none">
+      <Content />
+    </div>
+  </article>
+</Layout>

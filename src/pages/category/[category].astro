@@ -1,0 +1,53 @@
+---
+import Layout from "../../layouts/Layout.astro";
+import RecentPosts from "../../components/RecentPosts.astro";
+import CategorySidebar from "../../components/CategorySidebar.astro";
+import { BlogService } from "../../services/BlogService";
+
+export async function getStaticPaths() {
+  const blogService = new BlogService();
+  const allPosts = (await blogService.fetchAllPosts()).filterPublished().getPosts();
+  const categories = blogService.getUniqueCategories();
+
+  return categories.map((category) => ({
+    params: { category: category.toLowerCase() },
+    props: { category, allPosts },
+  }));
+}
+
+const { category, allPosts } = Astro.props;
+const blogService = new BlogService();
+
+blogService.setPosts(allPosts);
+
+const allCategories = blogService.getUniqueCategories();
+const filteredPosts = blogService.filterByCategory(category);
+
+const categoryPosts = filteredPosts.sortByDate().getPosts();
+---
+
+<Layout title={`${category} - Jeremy's Blog`}>
+  <main class="container mx-auto px-4 py-12 flex flex-col md:flex-row animate-fade-in">
+    <CategorySidebar categories={allCategories} />
+    <div class="md:w-3/4 md:pl-8">
+      <h1 class="text-4xl font-bold mb-8 text-gradient">{category}</h1>
+      <RecentPosts posts={categoryPosts} />
+    </div>
+  </main>
+</Layout>
+
+<style>
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  .animate-fade-in {
+    animation: fadeIn 0.5s ease-out forwards;
+  }
+</style>

@@ -1,0 +1,46 @@
+---
+import { Icon } from "astro-icon/components";
+import MobileMenu from "./MobileMenu.astro";
+
+const navItems = [
+  { name: "홈", href: "/" },
+  { name: "카테고리", href: "/categories" },
+];
+---
+
+<header
+  class="bg-black bg-opacity-80 backdrop-blur-md sticky top-0 z-50 transition-all duration-300"
+  id="header"
+>
+  <div class="container mx-auto px-4 py-6">
+    <div class="flex justify-between items-center">
+      <a href="/" class="text-2xl font-bold text-gradient hover:opacity-80 transition duration-300">
+        Jeremy's Blog
+      </a>
+      <nav class="hidden md:flex space-x-6">
+        {
+          navItems.map((item) => (
+            <a
+              href={item.href}
+              class="text-white hover:text-primary transition duration-300 border-b-2 border-transparent hover:border-primary pb-1"
+            >
+              {item.name}
+            </a>
+          ))
+        }
+      </nav>
+      <button
+        class="md:hidden text-white hover:text-primary transition duration-300"
+        id="menu-toggle"
+      >
+        <Icon name="mdi:menu" class="w-6 h-6" />
+      </button>
+    </div>
+  </div>
+</header>
+
+<MobileMenu navItems={navItems} />
+
+<script>
+  import "../scripts/header.ts";
+</script>

@@ -1,0 +1,27 @@
+---
+export interface Props {
+  categories: string[];
+}
+
+const { categories } = Astro.props;
+---
+
+<aside class="md:w-1/4 mb-8 md:mb-0">
+  <div class="bg-gray-900 p-6 rounded-2xl shadow-lg mb-6 transition duration-300 hover:shadow-xl">
+    <h2 class="text-xl font-semibold mb-4 text-gradient">카테고리</h2>
+    <ul class="space-y-2">
+      {
+        categories.map((category) => (
+          <li>
+            <a
+              href={`/category/${category.toLowerCase()}`}
+              class="text-secondary hover:text-primary transition duration-300 border-b border-transparent hover:border-primary pb-1 inline-block"
+            >
+              {category}
+            </a>
+          </li>
+        ))
+      }
+    </ul>
+  </div>
+</aside>

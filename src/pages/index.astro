@@ -1,20 +1,40 @@
 ---
+import Layout from "../layouts/Layout.astro";
+import CategorySidebar from "../components/CategorySidebar.astro";
+import RecentPosts from "../components/RecentPosts.astro";
+import { BlogService } from "../services/BlogService";
 
+const blogService = new BlogService();
+const recentPosts = (await blogService.fetchAllPosts())
+  .filterPublished()
+  .sortByDate()
+  .limitPosts(5)
+  .getPosts();
+
+const categories = (await blogService.fetchAllPosts()).filterPublished().getUniqueCategories();
 ---
 
-<html lang="en">
-	<head>
-		<meta charset="utf-8" />
-		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<meta name="viewport" content="width=device-width" />
-		<meta name="generator" content={Astro.generator} />
-		<title>Astro</title>
-	</head>
-	<body>
-		<a href="/">Home</a>
-		<a href="/about/">About</a>
-		<a href="/blog/">Blog</a>
+<Layout title="Jeremy's Blog">
+  <main class="container mx-auto px-4 py-12 flex flex-col md:flex-row animate-fade-in">
+    <CategorySidebar categories={categories} />
+    <div class="md:w-3/4 md:pl-8">
+      <RecentPosts posts={recentPosts} />
+    </div>
+  </main>
+</Layout>
 
-		<h1>My Astro Site</h1>
-	</body>
-</html>
+<style>
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  .animate-fade-in {
+    animation: fadeIn 0.5s ease-out forwards;
+  }
+</style>
