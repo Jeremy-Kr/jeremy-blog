@@ -4,13 +4,18 @@ import react from "@astrojs/react";
 import icon from "astro-icon";
 
 export default defineConfig({
-  integrations: [react(), tailwind(), icon()],
+  integrations: [
+    react(), 
+    tailwind({
+      applyBaseStyles: false,
+    }), 
+    icon()
+  ],
   vite: {
     ssr: {
       noExternal: ['@astrojs/prism']
     }
   },
-  // TypeScript 설정 추가
   typescript: {
     strict: true,
   }

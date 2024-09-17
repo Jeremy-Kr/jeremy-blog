@@ -18,12 +18,12 @@ export async function getStaticPaths() {
 const { category, allPosts } = Astro.props;
 const blogService = new BlogService();
 
+// 모든 게시물을 BlogService에 설정
 blogService.setPosts(allPosts);
 
-const allCategories = blogService.getUniqueCategories();
-const filteredPosts = blogService.filterByCategory(category);
+const categoryPosts = blogService.filterByCategory(category).sortByDate().getPosts();
 
-const categoryPosts = filteredPosts.sortByDate().getPosts();
+const allCategories = blogService.getUniqueCategories();
 ---
 
 <Layout title={`${category} - Jeremy's Blog`}>

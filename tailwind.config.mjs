@@ -2,7 +2,15 @@
 export default {
 	content: ['./src/**/*.{astro,html,js,jsx,md,mdx,svelte,ts,tsx,vue}'],
 	theme: {
-		extend: {},
+		extend: {
+			colors: {
+				primary: '#2997ff',
+				secondary: '#86868b',
+			},
+		},
 	},
-	plugins: [],
+	plugins: [
+		require('@tailwindcss/typography'),
+	],
+	darkMode: 'class',
 }
