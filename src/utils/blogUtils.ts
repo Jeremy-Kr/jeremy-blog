@@ -14,5 +14,5 @@ export function sortPostsByDate(posts: CollectionEntry<"blog">[]): CollectionEnt
 }
 
 export function getUniqueCategories(posts: CollectionEntry<"blog">[]): string[] {
-  return Array.from(new Set(posts.map((post) => post.data.category)));
+  return Array.from(new Set(posts.map((post) => post.data.categories).flat()));
 }
