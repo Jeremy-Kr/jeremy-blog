@@ -19,7 +19,9 @@ const { Content } = await entry.render();
 <Layout title={entry.data.title}>
   <article class="container mx-auto px-4 py-12">
     <h1 class="text-4xl font-bold mb-4">{entry.data.title}</h1>
-    <p class="text-gray-400 mb-8">{entry.data.date} | {entry.data.category}</p>
+    <p class="text-gray-400 mb-8">
+      {entry.data.date} | {entry.data.categories.join(", ")}
+    </p>
     <div class="prose prose-invert prose-lg max-w-none">
       <Content />
     </div>

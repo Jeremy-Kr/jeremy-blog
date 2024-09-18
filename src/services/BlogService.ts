@@ -26,7 +26,7 @@ export class BlogService {
 
   filterByCategory(category: string): BlogService {
     this.posts = this.posts.filter(
-      (post) => post.data.category.toLowerCase() === category.toLowerCase()
+      (post) => post.data.categories.some(cat => cat.toLowerCase() === category.toLowerCase())
     );
     return this;
   }
@@ -37,7 +37,8 @@ export class BlogService {
   }
 
   getUniqueCategories(): string[] {
-    return Array.from(new Set(this.posts.map((post) => post.data.category)));
+    const categoriesSet = new Set(this.posts.flatMap(post => post.data.categories));
+    return Array.from(categoriesSet);
   }
 
   getPosts(): CollectionEntry<"blog">[] {
