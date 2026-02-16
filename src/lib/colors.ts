@@ -26,3 +26,15 @@ export function getTagColor(tag: string): RainbowColor {
 export function getRainbowByIndex(index: number): RainbowColor {
   return RAINBOW_COLORS[index % RAINBOW_COLORS.length];
 }
+
+/** CSS 변수 기반 color + background 스타일 객체 반환 */
+export function getColorStyle(colorName: RainbowColor): {
+  color: string;
+  backgroundColor: string;
+} {
+  const colorVar = `var(--${colorName})`;
+  return {
+    color: colorVar,
+    backgroundColor: `color-mix(in srgb, ${colorVar} 12%, transparent)`,
+  };
+}

@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { getRainbowByIndex } from '@/lib/colors';
+import { getRainbowByIndex, getColorStyle } from '@/lib/colors';
 
 export const metadata: Metadata = {
   title: 'About',
@@ -32,21 +32,15 @@ export default function AboutPage() {
 
       <h2 className="font-display mt-10 mb-4 text-lg font-semibold">관심사</h2>
       <div className="flex flex-wrap gap-2">
-        {interests.map((interest, i) => {
-          const colorVar = `var(--${getRainbowByIndex(i)})`;
-          return (
-            <span
-              key={interest}
-              className="rounded-full px-3 py-1 text-sm font-medium"
-              style={{
-                color: colorVar,
-                backgroundColor: `color-mix(in srgb, ${colorVar} 12%, transparent)`,
-              }}
-            >
-              {interest}
-            </span>
-          );
-        })}
+        {interests.map((interest, i) => (
+          <span
+            key={interest}
+            className="rounded-full px-3 py-1 text-sm font-medium"
+            style={getColorStyle(getRainbowByIndex(i))}
+          >
+            {interest}
+          </span>
+        ))}
       </div>
 
       <h2 className="font-display mt-10 mb-4 text-lg font-semibold">링크</h2>

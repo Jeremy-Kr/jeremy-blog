@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { getAllTags } from '@/lib/posts';
-import { getTagColor } from '@/lib/colors';
+import { getTagColor, getColorStyle } from '@/lib/colors';
 
 export const metadata: Metadata = {
   title: 'Tags',
@@ -18,23 +18,17 @@ export default function TagsPage() {
         Tags
       </h1>
       <div className="flex flex-wrap gap-3">
-        {sorted.map(([tag, count]) => {
-          const colorVar = `var(--${getTagColor(tag)})`;
-          return (
-            <Link
-              key={tag}
-              href={`/tags/${tag}`}
-              className="rounded-full px-3 py-1.5 text-sm font-medium transition-opacity hover:opacity-80"
-              style={{
-                color: colorVar,
-                backgroundColor: `color-mix(in srgb, ${colorVar} 12%, transparent)`,
-              }}
-            >
-              {tag}
-              <span className="ml-1 opacity-60">({count})</span>
-            </Link>
-          );
-        })}
+        {sorted.map(([tag, count]) => (
+          <Link
+            key={tag}
+            href={`/tags/${tag}`}
+            className="rounded-full px-3 py-1.5 text-sm font-medium transition-opacity hover:opacity-80"
+            style={getColorStyle(getTagColor(tag))}
+          >
+            {tag}
+            <span className="ml-1 opacity-60">({count})</span>
+          </Link>
+        ))}
       </div>
     </section>
   );

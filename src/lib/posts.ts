@@ -18,23 +18,32 @@ export interface Post extends PostMeta {
   content: string;
 }
 
-export function getAllPosts(): PostMeta[] {
-  const files = fs.readdirSync(CONTENT_DIR).filter((f) => f.endsWith('.mdx'));
+function parseFrontmatter(
+  slug: string,
+  raw: string,
+): { meta: PostMeta; content: string } {
+  const { data, content } = matter(raw);
+  const meta: PostMeta = {
+    slug,
+    title: data.title ?? slug,
+    description: data.description ?? '',
+    date: data.date ?? '',
+    tags: data.tags ?? [],
+    readingTime: readingTime(content).text,
+  };
+  return { meta, content };
+}
 
-  return files
+function getMdxFiles(): string[] {
+  return fs.readdirSync(CONTENT_DIR).filter((f) => f.endsWith('.mdx'));
+}
+
+export function getAllPosts(): PostMeta[] {
+  return getMdxFiles()
     .map((filename) => {
       const slug = filename.replace(/\.mdx$/, '');
       const raw = fs.readFileSync(path.join(CONTENT_DIR, filename), 'utf-8');
-      const { data, content } = matter(raw);
-
-      return {
-        slug,
-        title: data.title ?? slug,
-        description: data.description ?? '',
-        date: data.date ?? '',
-        tags: data.tags ?? [],
-        readingTime: readingTime(content).text,
-      };
+      return parseFrontmatter(slug, raw).meta;
     })
     .sort((a, b) => (a.date > b.date ? -1 : 1));
 }
@@ -44,24 +53,12 @@ export function getPostBySlug(slug: string): Post | null {
   if (!fs.existsSync(filePath)) return null;
 
   const raw = fs.readFileSync(filePath, 'utf-8');
-  const { data, content } = matter(raw);
-
-  return {
-    slug,
-    title: data.title ?? slug,
-    description: data.description ?? '',
-    date: data.date ?? '',
-    tags: data.tags ?? [],
-    readingTime: readingTime(content).text,
-    content,
-  };
+  const { meta, content } = parseFrontmatter(slug, raw);
+  return { ...meta, content };
 }
 
 export function getAllSlugs(): string[] {
-  return fs
-    .readdirSync(CONTENT_DIR)
-    .filter((f) => f.endsWith('.mdx'))
-    .map((f) => f.replace(/\.mdx$/, ''));
+  return getMdxFiles().map((f) => f.replace(/\.mdx$/, ''));
 }
 
 /** 모든 태그와 각 태그의 포스트 수를 반환 */

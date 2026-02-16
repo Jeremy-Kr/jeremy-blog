@@ -92,6 +92,6 @@ export default async function OGImage({
         <span>jeremy.blog</span>
       </div>
     </div>,
-    { ...size },
+    size,
   );
 }
