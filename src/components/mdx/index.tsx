@@ -2,21 +2,24 @@ import type { MDXComponents } from 'mdx/types';
 import Link from 'next/link';
 import Image from 'next/image';
 
-function slugify(text: string) {
+const LINK_CLASS =
+  'text-accent decoration-accent/30 hover:text-accent-hover hover:decoration-accent underline underline-offset-2 transition-colors';
+
+function slugify(text: string): string {
   return text
     .toLowerCase()
     .replace(/[^\w\s-]/g, '')
     .replace(/\s+/g, '-');
 }
 
-function Heading({
-  level,
-  children,
-  ...props
-}: {
-  level: 1 | 2 | 3 | 4 | 5 | 6;
+type HeadingLevel = 1 | 2 | 3 | 4 | 5 | 6;
+
+interface HeadingProps extends React.HTMLAttributes<HTMLHeadingElement> {
+  level: HeadingLevel;
   children?: React.ReactNode;
-} & React.HTMLAttributes<HTMLHeadingElement>) {
+}
+
+function Heading({ level, children, ...props }: HeadingProps) {
   const Tag = `h${level}` as const;
   const id = typeof children === 'string' ? slugify(children) : undefined;
 
@@ -54,14 +57,13 @@ export const mdxComponents: MDXComponents = {
   ),
   p: (props) => <p className="mb-4 leading-7" {...props} />,
   a: ({ href, children, ...props }) => {
-    const isExternal = href?.startsWith('http');
-    if (isExternal) {
+    if (href?.startsWith('http')) {
       return (
         <a
           href={href}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-accent decoration-accent/30 hover:text-accent-hover hover:decoration-accent underline underline-offset-2 transition-colors"
+          className={LINK_CLASS}
           {...props}
         >
           {children}
@@ -69,11 +71,7 @@ export const mdxComponents: MDXComponents = {
       );
     }
     return (
-      <Link
-        href={href ?? '#'}
-        className="text-accent decoration-accent/30 hover:text-accent-hover hover:decoration-accent underline underline-offset-2 transition-colors"
-        {...props}
-      >
+      <Link href={href ?? '#'} className={LINK_CLASS} {...props}>
         {children}
       </Link>
     );

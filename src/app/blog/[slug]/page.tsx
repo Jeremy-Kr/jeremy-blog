@@ -2,7 +2,8 @@ import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { getAllSlugs, getPostBySlug } from '@/lib/posts';
 import { renderMDX } from '@/lib/mdx';
-import { getTagColor } from '@/lib/colors';
+import { formatDate } from '@/lib/date';
+import { TagList } from '@/components/TagList';
 
 export const dynamicParams = false;
 
@@ -10,19 +11,18 @@ export function generateStaticParams() {
   return getAllSlugs().map((slug) => ({ slug }));
 }
 
-export function generateMetadata({
+export async function generateMetadata({
   params,
 }: {
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
-  return params.then(({ slug }) => {
-    const post = getPostBySlug(slug);
-    if (!post) return {};
-    return {
-      title: post.title,
-      description: post.description,
-    };
-  });
+  const { slug } = await params;
+  const post = getPostBySlug(slug);
+  if (!post) return {};
+  return {
+    title: post.title,
+    description: post.description,
+  };
 }
 
 export default async function BlogPostPage({
@@ -43,31 +43,12 @@ export default async function BlogPostPage({
           {post.title}
         </h1>
         <div className="text-muted mt-2 flex items-center gap-3 text-sm">
-          <time dateTime={post.date}>
-            {new Date(post.date).toLocaleDateString('ko-KR', {
-              year: 'numeric',
-              month: 'long',
-              day: 'numeric',
-            })}
-          </time>
+          <time dateTime={post.date}>{formatDate(post.date)}</time>
           <span>{post.readingTime}</span>
         </div>
-        {post.tags.length > 0 && (
-          <div className="mt-3 flex flex-wrap gap-1.5">
-            {post.tags.map((tag) => (
-              <span
-                key={tag}
-                className="rounded-full px-2.5 py-0.5 text-xs font-medium"
-                style={{
-                  color: `var(--${getTagColor(tag)})`,
-                  backgroundColor: `color-mix(in srgb, var(--${getTagColor(tag)}) 12%, transparent)`,
-                }}
-              >
-                {tag}
-              </span>
-            ))}
-          </div>
-        )}
+        <div className="mt-3">
+          <TagList tags={post.tags} size="md" />
+        </div>
       </header>
       <div className="prose">{content}</div>
     </article>

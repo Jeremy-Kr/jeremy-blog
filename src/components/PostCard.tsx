@@ -1,14 +1,15 @@
 import Link from 'next/link';
 import type { PostMeta } from '@/lib/posts';
-import { getTagColor, getRainbowByIndex } from '@/lib/colors';
+import { getRainbowByIndex } from '@/lib/colors';
+import { formatDate } from '@/lib/date';
+import { TagList } from './TagList';
 
-export function PostCard({
-  post,
-  index = 0,
-}: {
+interface PostCardProps {
   post: PostMeta;
   index?: number;
-}) {
+}
+
+export function PostCard({ post, index = 0 }: PostCardProps) {
   const borderColor = `var(--${getRainbowByIndex(index)})`;
 
   return (
@@ -28,31 +29,12 @@ export function PostCard({
           {post.description}
         </p>
         <div className="text-muted mt-2 flex items-center gap-3 text-xs">
-          <time dateTime={post.date}>
-            {new Date(post.date).toLocaleDateString('ko-KR', {
-              year: 'numeric',
-              month: 'long',
-              day: 'numeric',
-            })}
-          </time>
+          <time dateTime={post.date}>{formatDate(post.date)}</time>
           <span>{post.readingTime}</span>
         </div>
-        {post.tags.length > 0 && (
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            {post.tags.map((tag) => (
-              <span
-                key={tag}
-                className="rounded-full px-2 py-0.5 text-xs font-medium"
-                style={{
-                  color: `var(--${getTagColor(tag)})`,
-                  backgroundColor: `color-mix(in srgb, var(--${getTagColor(tag)}) 12%, transparent)`,
-                }}
-              >
-                {tag}
-              </span>
-            ))}
-          </div>
-        )}
+        <div className="mt-2">
+          <TagList tags={post.tags} />
+        </div>
       </Link>
     </article>
   );
