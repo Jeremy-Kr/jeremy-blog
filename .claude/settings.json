@@ -1,0 +1,30 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -r '.tool_input.file_path' | xargs npx prettier --write 2>/dev/null || true",
+            "timeout": 30,
+            "statusMessage": "Prettier 포매팅 중..."
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "COMMAND=$(jq -r '.tool_input.command'); if echo \"$COMMAND\" | grep -qE '^git commit'; then cd \"$CLAUDE_PROJECT_DIR\" && pnpm build 2>&1 | tail -3; fi",
+            "timeout": 120,
+            "statusMessage": "커밋 전 빌드 검증 중..."
+          }
+        ]
+      }
+    ]
+  }
+}
