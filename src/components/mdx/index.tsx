@@ -21,7 +21,6 @@ function Heading({
   const id = typeof children === 'string' ? slugify(children) : undefined;
 
   return (
-    // @ts-expect-error — dynamic heading tag
     <Tag id={id} {...props}>
       {children}
     </Tag>
