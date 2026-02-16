@@ -1,6 +1,13 @@
-/** ISO 날짜 문자열을 한국어 로케일로 포맷 (예: 2026년 2월 16일) */
-export function formatDate(dateString: string): string {
-  return new Date(dateString).toLocaleDateString('ko-KR', {
+import type { Locale } from './i18n';
+
+const localeMap: Record<Locale, string> = {
+  ko: 'ko-KR',
+  en: 'en-US',
+};
+
+/** ISO 날짜 문자열을 로케일에 맞게 포맷 */
+export function formatDate(dateString: string, locale: Locale = 'ko'): string {
+  return new Date(dateString).toLocaleDateString(localeMap[locale], {
     year: 'numeric',
     month: 'long',
     day: 'numeric',
