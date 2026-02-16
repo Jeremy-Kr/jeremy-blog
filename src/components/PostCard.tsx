@@ -1,5 +1,7 @@
 import Link from 'next/link';
 import type { PostMeta } from '@/lib/posts';
+import type { Locale } from '@/lib/i18n';
+import { localePath } from '@/lib/i18n';
 import { getRainbowByIndex } from '@/lib/colors';
 import { formatDate } from '@/lib/date';
 import { TagList } from './TagList';
@@ -7,9 +9,10 @@ import { TagList } from './TagList';
 interface PostCardProps {
   post: PostMeta;
   index?: number;
+  lang?: Locale;
 }
 
-export function PostCard({ post, index = 0 }: PostCardProps) {
+export function PostCard({ post, index = 0, lang = 'ko' }: PostCardProps) {
   const borderColor = `var(--${getRainbowByIndex(index)})`;
 
   return (
@@ -18,7 +21,7 @@ export function PostCard({ post, index = 0 }: PostCardProps) {
       style={{ animationDelay: `${index * 80}ms` }}
     >
       <Link
-        href={`/blog/${post.slug}`}
+        href={localePath(lang, `/blog/${post.slug}`)}
         className="group block rounded-lg border-l-[3px] py-1 pl-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"
         style={{ borderColor }}
       >
@@ -29,7 +32,7 @@ export function PostCard({ post, index = 0 }: PostCardProps) {
           {post.description}
         </p>
         <div className="text-muted mt-2 flex items-center gap-3 text-xs">
-          <time dateTime={post.date}>{formatDate(post.date)}</time>
+          <time dateTime={post.date}>{formatDate(post.date, lang)}</time>
           <span>{post.readingTime}</span>
         </div>
         <div className="mt-2">
