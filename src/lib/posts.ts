@@ -98,7 +98,6 @@ export function getPostsByTag(tag: string, locale: Locale = 'ko'): PostMeta[] {
 
 /** 다른 언어 번역이 존재하는지 확인 */
 export function hasTranslation(slug: string, locale: Locale): boolean {
-  const targetLocale = locale === 'ko' ? 'en' : 'ko';
-  const filename = targetLocale === 'en' ? `${slug}.en.mdx` : `${slug}.mdx`;
-  return fs.existsSync(path.join(CONTENT_DIR, filename));
+  const otherLocale = locale === 'ko' ? 'en' : 'ko';
+  return getPostBySlug(slug, otherLocale) !== null;
 }

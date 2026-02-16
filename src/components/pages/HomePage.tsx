@@ -1,5 +1,4 @@
-import type { Locale } from '@/lib/i18n';
-import { t } from '@/lib/i18n';
+import { t, type Locale } from '@/lib/i18n';
 import { getAllPosts } from '@/lib/posts';
 import { PostCard } from '@/components/PostCard';
 

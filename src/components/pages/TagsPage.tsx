@@ -1,6 +1,5 @@
 import Link from 'next/link';
-import type { Locale } from '@/lib/i18n';
-import { t, localePath } from '@/lib/i18n';
+import { t, localePath, type Locale } from '@/lib/i18n';
 import { getAllTags } from '@/lib/posts';
 import { getTagColor, getColorStyle } from '@/lib/colors';
 

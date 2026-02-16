@@ -1,5 +1,4 @@
-import type { Locale } from '@/lib/i18n';
-import { t } from '@/lib/i18n';
+import { t, type Locale } from '@/lib/i18n';
 import { getRainbowByIndex, getColorStyle } from '@/lib/colors';
 
 const interests = ['TypeScript', 'React', 'Next.js', 'Rust', 'DevOps', 'UI/UX'];

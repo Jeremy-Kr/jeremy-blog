@@ -1,7 +1,6 @@
 import Link from 'next/link';
 import type { PostMeta } from '@/lib/posts';
-import type { Locale } from '@/lib/i18n';
-import { localePath } from '@/lib/i18n';
+import { localePath, type Locale } from '@/lib/i18n';
 import { getRainbowByIndex } from '@/lib/colors';
 import { formatDate } from '@/lib/date';
 import { TagList } from './TagList';

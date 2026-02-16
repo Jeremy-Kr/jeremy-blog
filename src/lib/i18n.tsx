@@ -33,7 +33,7 @@ const translations: Record<Locale, Translations> = {
     tags: 'Tags',
     about: 'About',
     noPosts: '아직 작성된 포스트가 없습니다.',
-    postsCount: (n: number) => `${n}개의 포스트`,
+    postsCount: (n) => `${n}개의 포스트`,
     aboutGreeting: (
       <>
         안녕하세요, <strong>Jeremy</strong>입니다.
@@ -46,14 +46,14 @@ const translations: Record<Locale, Translations> = {
     notTranslated: '',
     aboutDescription: '소개 페이지',
     tagsDescription: '태그별 포스트 모아보기',
-    tagDescription: (tag: string) => `"${tag}" 태그 포스트 모아보기`,
+    tagDescription: (tag) => `"${tag}" 태그 포스트 모아보기`,
   },
   en: {
     posts: 'Posts',
     tags: 'Tags',
     about: 'About',
     noPosts: 'No posts yet.',
-    postsCount: (n: number) => `${n} post${n === 1 ? '' : 's'}`,
+    postsCount: (n) => `${n} post${n === 1 ? '' : 's'}`,
     aboutGreeting: (
       <>
         Hi, I&apos;m <strong>Jeremy</strong>.
@@ -66,7 +66,7 @@ const translations: Record<Locale, Translations> = {
     notTranslated: 'This post is not yet available in English.',
     aboutDescription: 'About page',
     tagsDescription: 'Browse posts by tag',
-    tagDescription: (tag: string) => `Posts tagged "${tag}"`,
+    tagDescription: (tag) => `Posts tagged "${tag}"`,
   },
 };
 

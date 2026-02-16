@@ -1,7 +1,6 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import type { Locale } from '@/lib/i18n';
-import { t, localePath } from '@/lib/i18n';
+import { t, localePath, type Locale } from '@/lib/i18n';
 import { getPostBySlug, hasTranslation } from '@/lib/posts';
 import { renderMDX } from '@/lib/mdx';
 import { formatDate } from '@/lib/date';

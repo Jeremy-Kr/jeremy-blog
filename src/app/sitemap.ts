@@ -6,7 +6,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const koPosts = getAllPosts('ko');
   const enPosts = new Set(getAllPosts('en').map((p) => p.slug));
   const koTags = [...getAllTags('ko').keys()];
-  const enTags = [...getAllTags('en').keys()];
+  const enTags = new Set(getAllTags('en').keys());
 
   // 포스트 페이지
   const posts: MetadataRoute.Sitemap = koPosts.map((post) => ({
@@ -28,7 +28,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     alternates: {
       languages: {
         ko: `${SITE_URL}/tags/${encodeURIComponent(tag)}`,
-        ...(enTags.includes(tag) && {
+        ...(enTags.has(tag) && {
           en: `${SITE_URL}/en/tags/${encodeURIComponent(tag)}`,
         }),
       },

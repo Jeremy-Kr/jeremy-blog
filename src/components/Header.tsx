@@ -1,6 +1,5 @@
 import Link from 'next/link';
-import type { Locale } from '@/lib/i18n';
-import { localePath } from '@/lib/i18n';
+import { localePath, type Locale } from '@/lib/i18n';
 import { ThemeToggle } from './ThemeToggle';
 import { LanguageToggle } from './LanguageToggle';
 
