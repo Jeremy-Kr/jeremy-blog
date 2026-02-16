@@ -1,15 +1,33 @@
 import Link from 'next/link';
 import type { PostMeta } from '@/lib/posts';
+import { getTagColor, getRainbowByIndex } from '@/lib/colors';
 
-export function PostCard({ post }: { post: PostMeta }) {
+export function PostCard({
+  post,
+  index = 0,
+}: {
+  post: PostMeta;
+  index?: number;
+}) {
+  const borderColor = `var(--${getRainbowByIndex(index)})`;
+
   return (
-    <article>
-      <Link href={`/blog/${post.slug}`} className="group block">
-        <h2 className="text-lg font-semibold group-hover:text-accent transition-colors">
+    <article
+      className="animate-fade-up"
+      style={{ animationDelay: `${index * 80}ms` }}
+    >
+      <Link
+        href={`/blog/${post.slug}`}
+        className="group block rounded-lg border-l-[3px] py-1 pl-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"
+        style={{ borderColor }}
+      >
+        <h2 className="font-display group-hover:text-accent text-lg font-semibold transition-colors">
           {post.title}
         </h2>
-        <p className="mt-1 text-sm text-muted line-clamp-2">{post.description}</p>
-        <div className="mt-2 flex items-center gap-3 text-xs text-muted">
+        <p className="text-muted mt-1 line-clamp-2 text-sm">
+          {post.description}
+        </p>
+        <div className="text-muted mt-2 flex items-center gap-3 text-xs">
           <time dateTime={post.date}>
             {new Date(post.date).toLocaleDateString('ko-KR', {
               year: 'numeric',
@@ -24,7 +42,11 @@ export function PostCard({ post }: { post: PostMeta }) {
             {post.tags.map((tag) => (
               <span
                 key={tag}
-                className="rounded-full bg-accent/10 px-2 py-0.5 text-xs text-accent"
+                className="rounded-full px-2 py-0.5 text-xs font-medium"
+                style={{
+                  color: `var(--${getTagColor(tag)})`,
+                  backgroundColor: `color-mix(in srgb, var(--${getTagColor(tag)}) 12%, transparent)`,
+                }}
               >
                 {tag}
               </span>
