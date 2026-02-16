@@ -3,6 +3,7 @@ import localFont from 'next/font/local';
 import { JetBrains_Mono, Space_Grotesk } from 'next/font/google';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
+import { SITE_URL, SITE_NAME, SITE_DESCRIPTION } from '@/lib/constants';
 import './globals.css';
 
 const pretendard = localFont({
@@ -25,11 +26,23 @@ const spaceGrotesk = Space_Grotesk({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: {
-    default: 'Jeremy Blog',
-    template: '%s | Jeremy Blog',
+    default: SITE_NAME,
+    template: `%s | ${SITE_NAME}`,
   },
-  description: '개발 블로그 & 포트폴리오',
+  description: SITE_DESCRIPTION,
+  openGraph: {
+    type: 'website',
+    siteName: SITE_NAME,
+    locale: 'ko_KR',
+  },
+  twitter: {
+    card: 'summary_large_image',
+  },
+  alternates: {
+    types: { 'application/rss+xml': '/feed.xml' },
+  },
 };
 
 const themeScript = `
