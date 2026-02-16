@@ -1,16 +1,10 @@
 import type { MDXComponents } from 'mdx/types';
 import Link from 'next/link';
 import Image from 'next/image';
+import { slugify } from '@/lib/slugify';
 
 const LINK_CLASS =
   'text-accent decoration-accent/30 hover:text-accent-hover hover:decoration-accent underline underline-offset-2 transition-colors';
-
-function slugify(text: string): string {
-  return text
-    .toLowerCase()
-    .replace(/[^\w\s-]/g, '')
-    .replace(/\s+/g, '-');
-}
 
 type HeadingLevel = 1 | 2 | 3 | 4 | 5 | 6;
 
@@ -19,9 +13,22 @@ interface HeadingProps extends React.HTMLAttributes<HTMLHeadingElement> {
   children?: React.ReactNode;
 }
 
+function getTextContent(node: React.ReactNode): string {
+  if (typeof node === 'string') return node;
+  if (typeof node === 'number') return String(node);
+  if (Array.isArray(node)) return node.map(getTextContent).join('');
+  if (node && typeof node === 'object' && 'props' in node) {
+    const { children } = (node as { props: { children?: React.ReactNode } })
+      .props;
+    return getTextContent(children);
+  }
+  return '';
+}
+
 function Heading({ level, children, ...props }: HeadingProps) {
   const Tag = `h${level}` as const;
-  const id = typeof children === 'string' ? slugify(children) : undefined;
+  const text = getTextContent(children);
+  const id = text ? slugify(text) : undefined;
 
   return (
     <Tag id={id} {...props}>
