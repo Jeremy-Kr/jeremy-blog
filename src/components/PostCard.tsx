@@ -33,7 +33,7 @@ export function PostCard({ post, index = 0 }: PostCardProps) {
           <span>{post.readingTime}</span>
         </div>
         <div className="mt-2">
-          <TagList tags={post.tags} />
+          <TagList tags={post.tags} linked={false} />
         </div>
       </Link>
     </article>
