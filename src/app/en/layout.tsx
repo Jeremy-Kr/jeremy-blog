@@ -4,10 +4,10 @@ import { JetBrains_Mono, Space_Grotesk } from 'next/font/google';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { SITE_URL, SITE_NAME, SITE_DESCRIPTION } from '@/lib/constants';
-import './globals.css';
+import '../globals.css';
 
 const pretendard = localFont({
-  src: './fonts/PretendardVariable.woff2',
+  src: '../fonts/PretendardVariable.woff2',
   variable: '--font-pretendard',
   display: 'swap',
   weight: '45 920',
@@ -31,17 +31,18 @@ export const metadata: Metadata = {
     default: SITE_NAME,
     template: `%s | ${SITE_NAME}`,
   },
-  description: SITE_DESCRIPTION,
+  description: SITE_DESCRIPTION.en,
   openGraph: {
     type: 'website',
     siteName: SITE_NAME,
-    locale: 'ko_KR',
+    locale: 'en_US',
   },
   twitter: {
     card: 'summary_large_image',
   },
   alternates: {
-    types: { 'application/rss+xml': '/feed.xml' },
+    types: { 'application/rss+xml': '/en/feed.xml' },
+    languages: { ko: '/' },
   },
 };
 
@@ -54,13 +55,13 @@ const themeScript = `
   })();
 `;
 
-export default function RootLayout({
+export default function EnLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ko" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
@@ -68,7 +69,7 @@ export default function RootLayout({
         className={`${pretendard.variable} ${jetbrainsMono.variable} ${spaceGrotesk.variable} font-sans antialiased`}
       >
         <div className="mx-auto flex min-h-dvh max-w-2xl flex-col px-6">
-          <Header />
+          <Header lang="en" />
           <main className="flex-1 py-8">{children}</main>
           <Footer />
         </div>
