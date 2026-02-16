@@ -11,6 +11,7 @@
   --color-surface: var(--surface);
 
   --font-sans: 'Pretendard Variable', Pretendard, system-ui, sans-serif;
+  --font-display: 'Space Grotesk', 'Pretendard Variable', sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, monospace;
 }
 
