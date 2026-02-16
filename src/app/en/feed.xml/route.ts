@@ -13,15 +13,15 @@ function escapeXml(str: string): string {
 }
 
 export function GET() {
-  const posts = getAllPosts();
+  const posts = getAllPosts('en');
 
   const items = posts
     .map(
       (post) => `
     <item>
       <title>${escapeXml(post.title)}</title>
-      <link>${SITE_URL}/blog/${post.slug}</link>
-      <guid isPermaLink="true">${SITE_URL}/blog/${post.slug}</guid>
+      <link>${SITE_URL}/en/blog/${post.slug}</link>
+      <guid isPermaLink="true">${SITE_URL}/en/blog/${post.slug}</guid>
       <description>${escapeXml(post.description)}</description>
       <pubDate>${new Date(post.date).toUTCString()}</pubDate>
     </item>`,
@@ -32,10 +32,10 @@ export function GET() {
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
     <title>${escapeXml(SITE_NAME)}</title>
-    <link>${SITE_URL}</link>
-    <description>${escapeXml(SITE_DESCRIPTION.ko)}</description>
-    <language>ko</language>
-    <atom:link href="${SITE_URL}/feed.xml" rel="self" type="application/rss+xml"/>
+    <link>${SITE_URL}/en</link>
+    <description>${escapeXml(SITE_DESCRIPTION.en)}</description>
+    <language>en</language>
+    <atom:link href="${SITE_URL}/en/feed.xml" rel="self" type="application/rss+xml"/>
     ${items}
   </channel>
 </rss>`;
