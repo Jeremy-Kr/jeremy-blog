@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react';
+
 export type Locale = 'ko' | 'en';
 
 export const locales: Locale[] = ['ko', 'en'];
@@ -9,7 +11,23 @@ export function localePath(locale: Locale, path: string = ''): string {
   return `${prefix}${path}`;
 }
 
-const translations = {
+export interface Translations {
+  posts: string;
+  tags: string;
+  about: string;
+  noPosts: string;
+  postsCount: (n: number) => string;
+  aboutGreeting: ReactNode;
+  aboutBio: string;
+  interests: string;
+  links: string;
+  notTranslated: string;
+  aboutDescription: string;
+  tagsDescription: string;
+  tagDescription: (tag: string) => string;
+}
+
+const translations: Record<Locale, Translations> = {
   ko: {
     posts: 'Posts',
     tags: 'Tags',
@@ -50,9 +68,7 @@ const translations = {
     tagsDescription: 'Browse posts by tag',
     tagDescription: (tag: string) => `Posts tagged "${tag}"`,
   },
-} as const;
-
-export type Translations = (typeof translations)['ko'];
+};
 
 export function t(locale: Locale): Translations {
   return translations[locale];
