@@ -1,26 +1,78 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
+/* ─── Theme tokens ─── */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-background: var(--bg);
+  --color-foreground: var(--fg);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-surface: var(--surface);
+
+  --font-sans: 'Pretendard Variable', Pretendard, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* ─── Light mode: pastel palette ─── */
+:root {
+  --bg: #fdf4ff;
+  --fg: #3b1d4e;
+  --muted: #9f7aba;
+  --border: #e9d5f5;
+  --accent: #c084fc;
+  --accent-hover: #a855f7;
+  --surface: #faf5ff;
 }
 
+/* ─── Dark mode: muted pastels on dark ─── */
+.dark {
+  --bg: #150a1e;
+  --fg: #f3e8ff;
+  --muted: #c4b5fd;
+  --border: #3b1d5e;
+  --accent: #d8b4fe;
+  --accent-hover: #e9d5ff;
+  --surface: #1e1030;
+}
+
+/* ─── Base styles ─── */
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bg);
+  color: var(--fg);
+}
+
+/* ─── Code block styles (rehype-pretty-code) ─── */
+[data-rehype-pretty-code-figure] pre {
+  @apply overflow-x-auto rounded-lg border border-border bg-surface px-4 py-3;
+}
+
+[data-rehype-pretty-code-figure] code {
+  @apply text-sm leading-relaxed;
+  counter-reset: line;
+}
+
+[data-rehype-pretty-code-figure] [data-line] {
+  @apply px-1;
+}
+
+[data-rehype-pretty-code-figure] [data-highlighted-line] {
+  @apply -mx-4 border-l-2 border-accent bg-accent/10 px-[calc(1rem-2px)];
+}
+
+/* Dual theme: light visible by default, dark hidden */
+[data-rehype-pretty-code-figure] code[data-theme*=' '],
+[data-rehype-pretty-code-figure] code[data-theme*=' '] span {
+  color: var(--shiki-light);
+  background-color: transparent;
+}
+
+.dark [data-rehype-pretty-code-figure] code[data-theme*=' '],
+.dark [data-rehype-pretty-code-figure] code[data-theme*=' '] span {
+  color: var(--shiki-dark);
+}
+
+/* Inline code */
+:not(pre) > code {
+  @apply rounded bg-accent/10 px-1.5 py-0.5 text-sm text-accent;
 }
