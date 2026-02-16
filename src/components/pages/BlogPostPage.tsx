@@ -4,7 +4,9 @@ import { t, localePath, type Locale } from '@/lib/i18n';
 import { getPostBySlug, hasTranslation } from '@/lib/posts';
 import { renderMDX } from '@/lib/mdx';
 import { formatDate } from '@/lib/date';
+import { extractHeadings } from '@/lib/toc';
 import { TagList } from '@/components/TagList';
+import { TableOfContents } from '@/components/TableOfContents';
 
 interface BlogPostPageProps {
   slug: string;
@@ -37,6 +39,7 @@ export async function BlogPostPage({ slug, lang }: BlogPostPageProps) {
   if (!post) notFound();
 
   const content = await renderMDX(post.content);
+  const headings = extractHeadings(post.content);
   const otherLocale = lang === 'ko' ? 'en' : 'ko';
   const hasOtherLang = hasTranslation(slug, lang);
 
@@ -62,6 +65,7 @@ export async function BlogPostPage({ slug, lang }: BlogPostPageProps) {
           <TagList tags={post.tags} size="md" lang={lang} />
         </div>
       </header>
+      <TableOfContents items={headings} title={t(lang).toc} />
       <div className="prose">{content}</div>
     </article>
   );

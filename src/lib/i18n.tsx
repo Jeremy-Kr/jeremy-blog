@@ -25,6 +25,7 @@ export interface Translations {
   aboutDescription: string;
   tagsDescription: string;
   tagDescription: (tag: string) => string;
+  toc: string;
 }
 
 const translations: Record<Locale, Translations> = {
@@ -47,6 +48,7 @@ const translations: Record<Locale, Translations> = {
     aboutDescription: '소개 페이지',
     tagsDescription: '태그별 포스트 모아보기',
     tagDescription: (tag) => `"${tag}" 태그 포스트 모아보기`,
+    toc: '목차',
   },
   en: {
     posts: 'Posts',
@@ -67,6 +69,7 @@ const translations: Record<Locale, Translations> = {
     aboutDescription: 'About page',
     tagsDescription: 'Browse posts by tag',
     tagDescription: (tag) => `Posts tagged "${tag}"`,
+    toc: 'Table of Contents',
   },
 };
 
