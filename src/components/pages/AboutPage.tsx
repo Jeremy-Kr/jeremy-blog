@@ -4,8 +4,12 @@ import { getRainbowByIndex, getColorStyle } from '@/lib/colors';
 const interests = ['TypeScript', 'React', 'Next.js', 'Rust', 'DevOps', 'UI/UX'];
 
 const links = [
-  { label: 'GitHub', href: 'https://github.com/jeremy' },
-  { label: 'Email', href: 'mailto:hello@jeremy.blog' },
+  { label: 'GitHub', href: 'https://github.com/jeremy-kr' },
+  { label: 'Email', href: 'mailto:wjddlr905@gmail.com' },
+  {
+    label: 'LinkedIn',
+    href: 'https://www.linkedin.com/in/jeongik-lee-bb0265271/',
+  },
 ];
 
 interface AboutPageProps {
