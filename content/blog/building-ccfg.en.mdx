@@ -1,0 +1,211 @@
+---
+title: 'Building a Claude Code Tool with Claude Code'
+description: 'Building ccfg, a gamified AI coding usage tracker with Go TUI framework Bubbletea. Elm Architecture, AI pair programming, and the quest for SSS rank.'
+date: '2026-02-16'
+tags: ['Go', 'TUI', 'Claude Code', 'AI', 'Retrospective']
+---
+
+## The Joy of Recursion
+
+What happens when you build a tool that analyzes Claude Code — using Claude Code itself?
+
+"Building a tool that analyzes the tool you're using, with that very tool" sounds like a tongue twister at first. But once you actually do it, you find yourself in a peculiar feedback loop. When you ask Claude Code to "write code that counts how many times you've been called," that conversation itself becomes yet another call record.
+
+**ccfg** is a project born from this recursive curiosity. It's a TUI tool that visualizes Claude Code's configuration files and displays agent and tool usage as gamified rankings. In this post, I'll talk about the technical choices made while building ccfg, the Go TUI framework Bubbletea, and what it actually means to code alongside AI.
+
+## What Is ccfg?
+
+When you use Claude Code regularly, natural questions arise. Where are my settings? Which tools do I use the most? What are my usage patterns? The problem is that Claude Code's configuration is scattered across 8+ files. System administrator settings, user global settings, and project-specific settings all live at different paths with different priorities.
+
+ccfg solves this problem in three ways:
+
+1. **Configuration Visualization** — Displays all scattered config files in a tree view at a glance. You can check whether files exist and see the final merged values.
+2. **Usage Statistics** — Parses transcript JSONL files to aggregate how many times each tool and agent has been called.
+3. **Gamified Rankings** — Instead of plain numbers, converts usage into SSS through F grades. Progress bars and neon color badges give it an arcade feel.
+
+The tech stack is Go 1.25, Bubbletea (TUI framework), Lipgloss (styling), and Glamour (markdown rendering). Currently it consists of about 4,800 lines of Go code across 49 commits, and I'm working toward an open-source release.
+
+## Go + Bubbletea: Building a TUI with Elm Architecture
+
+There are several ways to build a TUI. The procedural ncurses-style approach, or a declarative approach like React. Bubbletea leans toward the latter — it feels like Elm Architecture transplanted into Go.
+
+The core consists of three functions:
+
+- **Init** — Returns the initial state and first command
+- **Update** — Receives messages (events) and updates state
+- **View** — Renders the current state as a string
+
+```go
+// Model manages the entire TUI state.
+type Model struct {
+    scan        *model.ScanResult
+    tree        TreeModel
+    preview     PreviewModel
+    focus       Pane
+    width       int
+    height      int
+    ready       bool
+    searchMode  bool
+    rankingMode bool
+    ranking     RankingModel
+}
+
+func (m Model) Init() tea.Cmd { return nil }
+
+func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+    switch msg := msg.(type) {
+    case tea.WindowSizeMsg:
+        m.width = msg.Width
+        m.height = msg.Height
+        m.ready = true
+        m.updateLayout()
+        return m, nil
+    case tea.KeyMsg:
+        // Handle keyboard input...
+    }
+    return m, nil
+}
+
+func (m Model) View() string {
+    if !m.ready {
+        return "Loading..."
+    }
+    header := m.renderHeader()
+    treeView := m.tree.View(treeW, m.focus == PaneTree)
+    previewView := m.preview.View(previewW, m.focus == PanePreview)
+    main := lipgloss.JoinHorizontal(lipgloss.Top, treeView, previewView)
+    return lipgloss.JoinVertical(lipgloss.Left, header, main, footer)
+}
+```
+
+Because state is immutable and only changes in Update, even when dealing with complex UI state, you only need to think about "given this state, what happens when this message arrives?" It's a similar mental model to React's `useReducer`.
+
+**Lipgloss** is a styling library that feels like CSS-in-JS brought to Go. You can declaratively chain Border, Padding, and Foreground colors:
+
+```go
+// Retro arcade color palette
+var (
+    colorYellow  = lipgloss.Color("#FFD700") // Gold yellow
+    colorOrange  = lipgloss.Color("#FF8C00") // Orange
+    colorGreen   = lipgloss.Color("#39FF14") // Neon green
+    colorCyan    = lipgloss.Color("#00FFFF") // Cyan
+    colorMagenta = lipgloss.Color("#FF00FF") // Magenta
+
+    // Panel border (focused) — Double Line
+    panelFocusedStyle = lipgloss.NewStyle().
+        Border(lipgloss.DoubleBorder()).
+        BorderForeground(colorOrange).
+        Padding(0, 1)
+)
+```
+
+That said, there were battles with Lipgloss too. Layout calculations were trickier than expected — particularly **fixed panel heights** and **MaxWidth line wrapping** issues kept recurring. When the terminal resized, panel heights would go negative, or long text would overflow beyond panel boundaries. It took several commits to properly understand the difference between `GetHorizontalFrameSize()` and `GetHorizontalBorderSize()`.
+
+## Gamification Design: The Secret Behind SSS Rank
+
+I could have simply shown tool usage as "Read: 1,234 calls, Bash: 567 calls." But listing raw numbers gets boring fast. Assigning grades like a game naturally motivates you to ask "how far am I from the next rank?"
+
+The core algorithm is based on a **logarithmic scale**. Tool usage follows a typical power law distribution — tools like Read get called thousands of times, while specialized tools might only be used once or twice. With a simple linear ratio, most tools would cluster at grade F.
+
+```go
+func logScore(count, maxCount int) float64 {
+    if maxCount <= 0 {
+        return 0
+    }
+    return math.Log(float64(count)+1) / math.Log(float64(maxCount)+1)
+}
+
+func gradeFromScore(score float64) Grade {
+    switch {
+    case score >= 0.95: return GradeSSS
+    case score >= 0.80: return GradeSS
+    case score >= 0.65: return GradeS
+    case score >= 0.50: return GradeA
+    case score >= 0.35: return GradeB
+    case score >= 0.20: return GradeC
+    case score >= 0.10: return GradeD
+    default:            return GradeF
+    }
+}
+```
+
+The formula `log(count+1) / log(max+1)` produces a score between 0 and 1, which maps to 8 grade tiers. The +1 prevents `log(0)` when count is zero. The advantage of this approach is that even tools with low usage receive a meaningful grade.
+
+Visually, I applied a retro arcade theme. SSS is magenta, SS is gold, S is orange. The `█` progress bar color changes per grade, along with different badges. There's an inherent reward effect in watching neon colors glow in your terminal.
+
+## Developing with Claude Code
+
+Most of ccfg's roughly 49 commits came from conversations with Claude Code. It wasn't fully automated generation — it was continuous, conversational pair programming.
+
+### What Worked Well
+
+**Rapid prototyping** was the most effective benefit. Requests like "make the tree view panel with double borders" or "add keyboard navigation" produced working code immediately. Bubbletea's clear Init/Update/View pattern made it easy for AI to insert code in the right places.
+
+**Boilerplate elimination** was also a huge help. Go's error handling (`if err != nil` repetition), line-by-line JSONL reading, JSON unmarshaling — the AI generated this repetitive code quickly. With the `extractToolsFromLine` function that extracts tool usage from transcripts, there was an ironic situation where Claude Code was writing code to parse Claude Code's own internal data format.
+
+```go
+func extractToolsFromLine(line []byte, counts map[string]int) {
+    // Find tool_use blocks in Claude Code transcript's
+    // assistant messages and count calls per tool
+    if !bytes.Contains(line, []byte(`"tool_use"`)) {
+        return
+    }
+    var cl claudeCodeLine
+    if err := json.Unmarshal(line, &cl); err != nil || cl.Type != "assistant" {
+        return
+    }
+    var blocks []contentBlock
+    if err := json.Unmarshal(cl.Message.Content, &blocks); err != nil {
+        return
+    }
+    for _, block := range blocks {
+        if block.Type == "tool_use" && block.Name != "" {
+            counts[block.Name]++
+        }
+    }
+}
+```
+
+**Automated refactoring** was frequent too. Requests like "separate the ranking logic from this file into its own file" improved the structure. Looking at the commit history, you can see a repeating `feat -> fix -> refactor` cycle.
+
+### Limitations and Caveats
+
+**Context loss** was the biggest problem. In long sessions, the initial design intent gradually fades, and code that contradicts earlier decisions starts appearing. To address this, I specified project conventions in `CLAUDE.md` and tracked current progress in `progress.txt`. The habit of recording state so that "the next context can pick up where we left off" was crucial.
+
+**Over-reliance** is a subtle risk. When AI-generated code compiles and passes tests, it's tempting to just move on. But subtle logic errors or inefficient implementations can hide beneath the surface. Lipgloss layout calculations in particular — the difference between `Width` and `MaxWidth`, frame size calculations — were areas where AI frequently got things wrong too.
+
+**Creative decisions are still the human's job.** The idea to gamify usage, the reason for choosing log scale, the retro arcade theme as a design direction — these were all my decisions. AI helped with implementation, but "what to build" was something I had to determine.
+
+**Debugging complex state bugs** was also difficult. When multiple modes (normal/search/merge/ranking) overlap in a TUI, combined with terminal resizing, hard-to-reproduce bugs emerge. These bugs are hard to even describe as "I got this error," and even harder to explain to AI.
+
+### Real-World Workflow Patterns
+
+The development process generally followed this cycle:
+
+1. Describe the feature ("Add tab navigation to the ranking view")
+2. Code generation (AI writes it)
+3. Run and verify (check directly in the terminal)
+4. Feedback ("The tab bar is too wide, reduce the spacing")
+5. Iterate (2-5 rounds)
+
+Each feature averaged 3-4 feedback loops. Perfect code rarely came out on the first try, but it converged quickly once given feedback.
+
+## Lessons Learned
+
+**The power of small commits.** The 49 commits are like a time-lapse of the development process. When each commit contains a single logical change, it's easy to trace back "why did I do this?" later. This is especially important when working with AI — if you make large changes at once and something breaks, it's hard to pinpoint which part went wrong.
+
+**The unique debugging of TUI development.** Unlike web or mobile, terminals have fluid dimensions, and ANSI escape sequences complicate layout calculations. `lipgloss.Width()` calculates visual width, but `len()` returns byte length. Overlooking this difference causes layout breakage with CJK characters.
+
+**The value of transcript data mining.** The JSONL transcripts that Claude Code leaves behind are a treasure trove of usage patterns. Which tools you use most, which agents you call, average turns per session. Analyzing this data lets you objectively observe your own AI coding habits.
+
+**The ability to decide "what to build."** As AI dramatically increases implementation speed, the bottleneck has shifted from "how fast can you code" to "how well can you decide what to build." The gamification idea, log scale choice, and retro theme — these decisions shaped the project's character, and they were in a domain that couldn't be delegated to AI.
+
+## Wrapping Up
+
+The thought that came up most while building ccfg was this:
+
+> AI is a better pencil. Even when the pencil improves, it's still the person who decides what to draw. But what used to take days to sketch now takes just hours. You can try more, fail faster, and learn faster.
+
+ccfg will be released as open source soon. If you're a Claude Code user, you'll be able to enjoy visualizing your own usage patterns.
+
+One last thing — build your own tools. Using tools others have made well is important, but building tools tailored to your own workflow deepens your understanding of development itself. In an era where AI helps with implementation, all you need is an idea.
