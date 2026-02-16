@@ -63,3 +63,19 @@ export function getAllSlugs(): string[] {
     .filter((f) => f.endsWith('.mdx'))
     .map((f) => f.replace(/\.mdx$/, ''));
 }
+
+/** 모든 태그와 각 태그의 포스트 수를 반환 */
+export function getAllTags(): Map<string, number> {
+  const tags = new Map<string, number>();
+  for (const post of getAllPosts()) {
+    for (const tag of post.tags) {
+      tags.set(tag, (tags.get(tag) ?? 0) + 1);
+    }
+  }
+  return tags;
+}
+
+/** 특정 태그를 가진 포스트 목록 반환 (날짜순 정렬됨) */
+export function getPostsByTag(tag: string): PostMeta[] {
+  return getAllPosts().filter((post) => post.tags.includes(tag));
+}
