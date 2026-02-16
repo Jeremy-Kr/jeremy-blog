@@ -6,7 +6,7 @@ export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';
 
 export function generateStaticParams() {
-  return getAllSlugs().map((slug) => ({ slug }));
+  return getAllSlugs('ko').map((slug) => ({ slug }));
 }
 
 const RAINBOW = [
@@ -24,7 +24,7 @@ export default async function OGImage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const post = getPostBySlug(slug);
+  const post = getPostBySlug(slug, 'ko');
   const title = post?.title ?? slug;
   const description = post?.description ?? '';
 
