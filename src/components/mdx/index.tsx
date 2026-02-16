@@ -29,13 +29,25 @@ function Heading({
 
 export const mdxComponents: MDXComponents = {
   h1: (props) => (
-    <Heading level={1} className="mt-8 mb-4 text-3xl font-bold" {...props} />
+    <Heading
+      level={1}
+      className="rainbow-text font-display mt-8 mb-4 text-3xl font-bold"
+      {...props}
+    />
   ),
   h2: (props) => (
-    <Heading level={2} className="mt-8 mb-3 text-2xl font-semibold" {...props} />
+    <Heading
+      level={2}
+      className="font-display mt-8 mb-3 border-l-[3px] border-[var(--rainbow-blue)] pl-3 text-2xl font-semibold"
+      {...props}
+    />
   ),
   h3: (props) => (
-    <Heading level={3} className="mt-6 mb-2 text-xl font-semibold" {...props} />
+    <Heading
+      level={3}
+      className="font-display mt-6 mb-2 border-l-[3px] border-[var(--rainbow-green)] pl-3 text-xl font-semibold"
+      {...props}
+    />
   ),
   h4: (props) => (
     <Heading level={4} className="mt-4 mb-2 text-lg font-medium" {...props} />
@@ -49,7 +61,7 @@ export const mdxComponents: MDXComponents = {
           href={href}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-accent underline decoration-accent/30 underline-offset-2 transition-colors hover:text-accent-hover hover:decoration-accent"
+          className="text-accent decoration-accent/30 hover:text-accent-hover hover:decoration-accent underline underline-offset-2 transition-colors"
           {...props}
         >
           {children}
@@ -59,7 +71,7 @@ export const mdxComponents: MDXComponents = {
     return (
       <Link
         href={href ?? '#'}
-        className="text-accent underline decoration-accent/30 underline-offset-2 transition-colors hover:text-accent-hover hover:decoration-accent"
+        className="text-accent decoration-accent/30 hover:text-accent-hover hover:decoration-accent underline underline-offset-2 transition-colors"
         {...props}
       >
         {children}
@@ -81,9 +93,9 @@ export const mdxComponents: MDXComponents = {
   li: (props) => <li className="mb-1" {...props} />,
   blockquote: (props) => (
     <blockquote
-      className="my-4 border-l-2 border-accent pl-4 italic text-muted"
+      className="text-muted relative my-4 overflow-hidden rounded-r-md pl-5 italic before:absolute before:top-0 before:left-0 before:h-full before:w-[3px] before:rounded-full before:bg-[image:var(--rainbow-gradient)]"
       {...props}
     />
   ),
-  hr: () => <hr className="my-8 border-border" />,
+  hr: () => <div className="rainbow-bar my-8 h-[2px] rounded-full" />,
 };
