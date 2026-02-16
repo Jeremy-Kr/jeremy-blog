@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { getAllSlugs, getPostBySlug } from '@/lib/posts';
 import { renderMDX } from '@/lib/mdx';
+import { getTagColor } from '@/lib/colors';
 
 export const dynamicParams = false;
 
@@ -36,10 +37,12 @@ export default async function BlogPostPage({
   const content = await renderMDX(post.content);
 
   return (
-    <article>
+    <article className="animate-fade-up">
       <header className="mb-8">
-        <h1 className="text-3xl font-bold">{post.title}</h1>
-        <div className="mt-2 flex items-center gap-3 text-sm text-muted">
+        <h1 className="rainbow-text font-display text-3xl font-bold">
+          {post.title}
+        </h1>
+        <div className="text-muted mt-2 flex items-center gap-3 text-sm">
           <time dateTime={post.date}>
             {new Date(post.date).toLocaleDateString('ko-KR', {
               year: 'numeric',
@@ -54,7 +57,11 @@ export default async function BlogPostPage({
             {post.tags.map((tag) => (
               <span
                 key={tag}
-                className="rounded-full bg-accent/10 px-2.5 py-0.5 text-xs text-accent"
+                className="rounded-full px-2.5 py-0.5 text-xs font-medium"
+                style={{
+                  color: `var(--${getTagColor(tag)})`,
+                  backgroundColor: `color-mix(in srgb, var(--${getTagColor(tag)}) 12%, transparent)`,
+                }}
               >
                 {tag}
               </span>

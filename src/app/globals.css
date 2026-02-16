@@ -167,7 +167,20 @@ body {
 
 /* ─── Code block styles (rehype-pretty-code) ─── */
 [data-rehype-pretty-code-figure] pre {
-  @apply border-border bg-surface overflow-x-auto rounded-lg border px-4 py-3;
+  @apply border-border bg-surface relative overflow-x-auto rounded-lg border px-4 pt-5 pb-3;
+}
+
+[data-rehype-pretty-code-figure] pre::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--rainbow-gradient);
+  background-size: 300% 100%;
+  animation: rainbow-flow 4s linear infinite;
+  border-radius: 8px 8px 0 0;
 }
 
 [data-rehype-pretty-code-figure] code {
@@ -180,7 +193,7 @@ body {
 }
 
 [data-rehype-pretty-code-figure] [data-highlighted-line] {
-  @apply border-accent bg-accent/10 -mx-4 border-l-2 px-[calc(1rem-2px)];
+  @apply -mx-4 border-l-2 border-[var(--rainbow-violet)] bg-[var(--rainbow-violet)]/8 px-[calc(1rem-2px)];
 }
 
 /* Dual theme: light visible by default, dark hidden */
