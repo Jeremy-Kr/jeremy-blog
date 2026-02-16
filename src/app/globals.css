@@ -14,18 +14,34 @@
   --font-mono: 'JetBrains Mono', ui-monospace, monospace;
 }
 
-/* ─── Light mode: pastel palette ─── */
+/* ─── Light mode: warm cream + rainbow pride ─── */
 :root {
-  --bg: #fdf4ff;
-  --fg: #3b1d4e;
+  --bg: #fffaf5;
+  --fg: #2d1b3d;
   --muted: #9f7aba;
   --border: #e9d5f5;
   --accent: #c084fc;
   --accent-hover: #a855f7;
   --surface: #faf5ff;
+
+  --rainbow-red: #ff6b8a;
+  --rainbow-orange: #ff9f43;
+  --rainbow-yellow: #ffd93d;
+  --rainbow-green: #6bcb77;
+  --rainbow-blue: #4d96ff;
+  --rainbow-violet: #c084fc;
+  --rainbow-gradient: linear-gradient(
+    90deg,
+    var(--rainbow-red),
+    var(--rainbow-orange),
+    var(--rainbow-yellow),
+    var(--rainbow-green),
+    var(--rainbow-blue),
+    var(--rainbow-violet)
+  );
 }
 
-/* ─── Dark mode: muted pastels on dark ─── */
+/* ─── Dark mode: muted pastels on dark + rainbow ─── */
 .dark {
   --bg: #150a1e;
   --fg: #f3e8ff;
@@ -34,6 +50,22 @@
   --accent: #d8b4fe;
   --accent-hover: #e9d5ff;
   --surface: #1e1030;
+
+  --rainbow-red: #ff8fa3;
+  --rainbow-orange: #ffb570;
+  --rainbow-yellow: #ffe066;
+  --rainbow-green: #85e89d;
+  --rainbow-blue: #79b8ff;
+  --rainbow-violet: #d8b4fe;
+  --rainbow-gradient: linear-gradient(
+    90deg,
+    var(--rainbow-red),
+    var(--rainbow-orange),
+    var(--rainbow-yellow),
+    var(--rainbow-green),
+    var(--rainbow-blue),
+    var(--rainbow-violet)
+  );
 }
 
 /* ─── Base styles ─── */
@@ -44,7 +76,7 @@ body {
 
 /* ─── Code block styles (rehype-pretty-code) ─── */
 [data-rehype-pretty-code-figure] pre {
-  @apply overflow-x-auto rounded-lg border border-border bg-surface px-4 py-3;
+  @apply border-border bg-surface overflow-x-auto rounded-lg border px-4 py-3;
 }
 
 [data-rehype-pretty-code-figure] code {
@@ -57,7 +89,7 @@ body {
 }
 
 [data-rehype-pretty-code-figure] [data-highlighted-line] {
-  @apply -mx-4 border-l-2 border-accent bg-accent/10 px-[calc(1rem-2px)];
+  @apply border-accent bg-accent/10 -mx-4 border-l-2 px-[calc(1rem-2px)];
 }
 
 /* Dual theme: light visible by default, dark hidden */
@@ -74,5 +106,5 @@ body {
 
 /* Inline code */
 :not(pre) > code {
-  @apply rounded bg-accent/10 px-1.5 py-0.5 text-sm text-accent;
+  @apply bg-accent/10 text-accent rounded px-1.5 py-0.5 text-sm;
 }
