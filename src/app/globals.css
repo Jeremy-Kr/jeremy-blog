@@ -165,6 +165,33 @@ body {
   color: var(--fg);
 }
 
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  opacity: 0.04;
+  background:
+    radial-gradient(ellipse at 20% 20%, var(--rainbow-red) 0%, transparent 50%),
+    radial-gradient(
+      ellipse at 80% 20%,
+      var(--rainbow-blue) 0%,
+      transparent 50%
+    ),
+    radial-gradient(
+      ellipse at 50% 80%,
+      var(--rainbow-green) 0%,
+      transparent 50%
+    ),
+    radial-gradient(
+      ellipse at 80% 80%,
+      var(--rainbow-violet) 0%,
+      transparent 50%
+    );
+  animation: mesh-drift 20s ease-in-out infinite;
+  pointer-events: none;
+}
+
 /* ─── Code block styles (rehype-pretty-code) ─── */
 [data-rehype-pretty-code-figure] pre {
   @apply border-border bg-surface relative overflow-x-auto rounded-lg border px-4 pt-5 pb-3;
