@@ -69,6 +69,96 @@
   );
 }
 
+/* ─── Keyframe animations ─── */
+@keyframes rainbow-flow {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 300% 50%;
+  }
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes gradient-text-flow {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes toggle-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes mesh-drift {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  33% {
+    transform: translate(2%, 1%) scale(1.01);
+  }
+  66% {
+    transform: translate(-1%, 2%) scale(0.99);
+  }
+}
+
+/* ─── Utility classes ─── */
+.rainbow-bar {
+  background: var(--rainbow-gradient);
+  background-size: 300% 100%;
+  animation: rainbow-flow 4s linear infinite;
+}
+
+.rainbow-text {
+  background: var(--rainbow-gradient);
+  background-size: 300% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: gradient-text-flow 6s ease infinite;
+}
+
+.animate-fade-up {
+  animation: fade-up 0.5s ease-out both;
+}
+
+.animate-spin-once {
+  animation: toggle-spin 0.4s ease-in-out;
+}
+
+/* ─── Accessibility: reduce motion ─── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
 /* ─── Base styles ─── */
 body {
   background: var(--bg);
