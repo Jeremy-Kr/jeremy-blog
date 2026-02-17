@@ -1,0 +1,192 @@
+---
+title: 'ccfg: The Road to Open Source'
+description: 'The journey of preparing a side project for open-source release. Repo cleanup, structural improvements, and the story up to the brink of brew deployment.'
+date: '2026-02-17'
+tags: ['Go', 'TUI', 'Claude Code', 'Open Source', 'Retrospective']
+---
+
+## Previously
+
+In my [previous post](/blog/building-ccfg), I talked about how ccfg was born and the technical choices behind it. A TUI tool that visualizes Claude Code's configuration and displays usage as gamified rankings. Back then, I wrote "working toward an open-source release" — and now, after 66 commits and over 5,000 lines of Go code, that goal is nearly within reach.
+
+This post covers the journey of turning "code that runs on my machine" into "a tool anyone can install and use." There was more to it than I expected.
+
+## "Working Code" vs. "Code You Can Ship"
+
+When building a side project, you have total freedom. Messy folder structure? Fine. Variable named `tmp2`? Only I need to know. Comments in Korean, hardcoded paths — as long as it runs on my Mac, it's good enough.
+
+Open source is different. Someone will read your README and try to install it. If it errors out, they'll open an issue. They might read your code and send a PR. The moment you imagine that "someone," your standards for the code completely change.
+
+This was especially true for ccfg. Claude Code's config paths vary by OS, and the transcript file format differs subtly between versions. There was no guarantee that code tested only in my environment would work in someone else's.
+
+A mindset shift was needed. "It works" → "Can someone seeing this for the first time understand it?"
+
+## Repo Cleanup: More Work Than You'd Think
+
+### From Korean to English
+
+The biggest task in open-source preparation was surprisingly the **language switch**. Initial development naturally proceeded in Korean — comments, variable descriptions, test messages, error strings, all of it.
+
+When targeting a global open-source audience, English becomes the default. I translated all Go source code comments and strings to English, and switched the README and CONTRIBUTING docs to English as the primary versions. Korean documentation is still maintained alongside as `README.ko.md` and `CONTRIBUTING.ko.md`. Two commits went into this work — the commits that modified the most files while changing zero lines of actual code.
+
+### Removing Sensitive Information
+
+I combed through the entire codebase looking for hardcoded paths and personal information. `~/.claude` is fine, but there were a few places with absolute paths like `/Users/jeremy/...` baked in.
+
+I searched the entire git history with `git log -p` to check for any sensitive data that had ever been committed. Fortunately there were no secrets, but some tests contained real session data that needed to be replaced with mock data.
+
+### Project Metadata
+
+Open-source projects need more than just code:
+
+- **LICENSE** — I chose MIT. It's a personal tool, and I wanted as many people as possible to use it freely.
+- **CODE_OF_CONDUCT.md** — A contributor code of conduct. Even for small projects, it signals the direction of the community.
+- **CHANGELOG.md** — Documented v0.1.0 changes in [Keep a Changelog](https://keepachangelog.com/) format.
+- **GitHub templates** — Added issue and PR templates under `.github/ISSUE_TEMPLATE/` and `pull_request_template.md`.
+
+I also re-examined `.gitignore` to make sure binaries, IDE settings (`.idea/`, `.vscode/`), OS metadata files (`.DS_Store`, `Thumbs.db`), and environment files (`.env`) were all covered.
+
+## Structural Improvements
+
+### Package Separation
+
+The early ccfg had some structure, but I refined it further during open-source preparation. Here's the final layout:
+
+```
+ccfg/
+├── cmd/ccfg/       ← CLI entrypoint
+├── internal/
+│   ├── merger/     ← Config file merging logic
+│   ├── model/      ← Shared types (ScanResult, ConfigCategory, etc.)
+│   ├── parser/     ← JSON/JSONC parsing, Markdown rendering, agent/skill metadata
+│   ├── scanner/    ← Config file path discovery & scanning
+│   ├── tui/        ← Bubbletea models, views, styles, keybindings
+│   ├── usage/      ← Tool/agent/skill usage collection & ranking
+│   └── watcher/    ← fsnotify-based file watching
+├── docs/           ← PRD, roadmap
+└── main.go
+```
+
+I leveraged Go's `internal/` package convention. Code under `internal/` can't be imported externally, making the boundary between public API and internal implementation explicit.
+
+The biggest change was separating TUI code from business logic. Previously, the `Update()` function directly read and parsed files. After extracting this into the `scanner`, `parser`, and `usage` packages, each could be tested independently.
+
+### Error Handling Revisited
+
+In the personal project, there were quite a few places with `if err != nil { panic(err) }`. In open source, panics are a shortcut to terrible user experience.
+
+I reviewed every error path and established two principles:
+
+- **Missing files show empty state** — A user who just installed Claude Code might not have transcripts yet. Showing "No data" instead of crashing is the right call.
+- **Parse failures skip only that item** — If one line of a transcript is corrupted, the whole thing shouldn't stop. Log it and move on to the next line with `continue`.
+
+### Cross-Platform Support
+
+Making code that only ran on my Mac also work on Linux. Since Claude Code's config paths differ by OS, I applied `runtime.GOOS` branching to the path discovery logic:
+
+```go
+func ManagedPaths() (string, []FileEntry) {
+    var base string
+    switch runtime.GOOS {
+    case "darwin":
+        base = "/Library/Application Support/ClaudeCode"
+    case "linux":
+        base = "/etc/claude-code"
+    default:
+        return "", nil
+    }
+    return base, []FileEntry{
+        {RelPath: "managed_settings.json", Description: "Managed settings", Category: model.CategorySettings},
+        {RelPath: "policies.json", Description: "Policy file", Category: model.CategoryPolicy},
+    }
+}
+```
+
+I separated path-returning functions for each of the three scopes — Managed, User, and Project — so adding a new OS only requires adding a `case` to the relevant function.
+
+## New Features
+
+I also polished and added features significantly during the open-source prep. Here are the major additions since the previous post.
+
+### fsnotify File Watching
+
+The most practical addition. Previously, you had to restart ccfg for config file changes to take effect. Now the `internal/watcher` package uses [fsnotify](https://github.com/fsnotify/fsnotify) to detect file changes and automatically rescans. Keep ccfg open alongside your editor and watch changes reflected in real time.
+
+### Agent Character Cards & Skill Ability Cards
+
+Claude Code's custom agents (`.claude/agents/`) and skills (`.claude/skills/`) metadata are parsed and displayed in a game character card-style UI. Agent names, roles, and available tools are laid out in an at-a-glance card format.
+
+### Virtual Node Tree
+
+Hooks and MCP server configurations inside `settings.json` are parsed and displayed as virtual nodes in the tree view. Complex settings structures that were previously buried in a single file can now be explored in tree form.
+
+### Enhanced Usage Rankings
+
+The SSS-to-F grading system from the previous post has been refined. Beyond tool rankings, **agent** and **skill** tabs have been added — switch between them with `1/2/3` keys, and toggle between all/project scope with `s`. In the tree view, pressing `/` activates a name filter for searching.
+
+## Brew Deployment: The Last Puzzle Piece
+
+What remains is Homebrew deployment. The deployment pipeline for a Go project generally looks like this:
+
+1. **GoReleaser** — Automatically builds multi-platform binaries when you push a tag
+2. **GitHub Release** — Attaches built binaries to the release
+3. **Homebrew Tap** — Create a `homebrew-tap` repo and register the formula
+
+The `.goreleaser.yml` is already set up:
+
+```yaml
+builds:
+  - main: ./cmd/ccfg
+    binary: ccfg
+    env: [CGO_ENABLED=0]
+    goos: [darwin, linux]
+    goarch: [amd64, arm64]
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+      - -X main.commit={{.Commit}}
+
+brews:
+  - repository:
+      owner: jeremy-kr
+      name: homebrew-tap
+    homepage: https://github.com/jeremy-kr/ccfg
+    description: TUI dashboard for viewing Claude Code config files
+    license: MIT
+```
+
+The `ldflags` inject the version and commit hash at build time, enabling `ccfg --version`. The GitHub Actions release workflow is already configured too, so `git tag v0.1.0 && git push --tags` triggers the entire pipeline.
+
+Once set up, users can install with a single `brew install jeremy-kr/tap/ccfg`. A much lower barrier than cloning the source and running `go build`.
+
+## Open-Source Release Checklist
+
+Here are the items I checked before making the project public. Hopefully useful for anyone on a similar journey.
+
+- [x] **README.md** — English primary + Korean version (`README.ko.md`)
+- [x] **LICENSE** — MIT license
+- [x] **CONTRIBUTING.md** — English + Korean contribution guides
+- [x] **CODE_OF_CONDUCT.md** — Contributor code of conduct
+- [x] **CHANGELOG.md** — Keep a Changelog format
+- [x] **CI/CD** — GitHub Actions release automation workflow
+- [x] **Package structure** — 7 packages under `internal/`
+- [x] **Code localization** — All comments, strings, test messages translated to English
+- [x] **Sensitive data removal** — Hardcoded paths and real data cleaned up
+- [x] **Error handling** — Panics removed, graceful failures
+- [x] **Cross-platform** — macOS and Linux support (`runtime.GOOS` branching)
+- [x] **GoReleaser** — Multi-platform binary build configuration
+- [ ] **Homebrew Tap** — Token setup and actual deployment testing
+
+Nearly everything is checked off. All that remains is the Homebrew tap token integration and actual deployment testing.
+
+## Looking Back
+
+The thing I felt most during the open-source preparation process was that the work itself is a powerful tool for improving code quality.
+
+When you adopt the premise "someone else is going to read this code," you naturally start fixing variable names, strengthening error handling, and writing documentation. The work of translating Korean comments to English in particular wasn't mere translation. Rewriting comments became an opportunity to re-examine whether "this function is really doing what its name says."
+
+Another realization: if you wait for perfection, you'll never ship. ccfg still has plenty of gaps. The README screenshots are still TODO, and Windows support is lacking. But v0.1.0 just needs to be a "minimally usable version." The rest can be filled in through issues and PRs.
+
+Turning a side project into open source is a different kind of work from writing code. Cleanup, documentation, translation, and "seeing through someone else's eyes" take more time than coding. But once you go through that process, the project is undeniably more mature.
+
+Once the brew deployment is complete, I'll share the release news in the next post.

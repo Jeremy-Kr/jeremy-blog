@@ -1,0 +1,192 @@
+---
+title: 'ccfg, 오픈소스가 되기까지'
+description: '사이드 프로젝트를 오픈소스로 공개하기 위해 거친 과정들. 레포 정리, 구조 개선, 그리고 brew 배포 직전까지의 이야기.'
+date: '2026-02-17'
+tags: ['Go', 'TUI', 'Claude Code', '오픈소스', '회고']
+---
+
+## 이전 이야기
+
+[지난 글](/blog/building-ccfg)에서 ccfg의 탄생 배경과 기술적 선택들을 이야기했습니다. Claude Code의 설정을 시각화하고, 사용량을 게임화된 랭킹으로 보여주는 TUI 도구. 그때는 "오픈소스 공개를 목표로 개발 중"이었는데, 66개의 커밋과 5,000줄이 넘는 Go 코드를 거쳐 이제 그 목표가 거의 눈앞에 왔습니다.
+
+이번 글에서는 "내 컴퓨터에서 돌아가는 코드"를 "누구나 설치해서 쓸 수 있는 도구"로 만들기까지의 과정을 다룹니다. 생각보다 할 게 많았습니다.
+
+## "돌아가는 코드"와 "공개할 수 있는 코드"
+
+사이드 프로젝트를 만들 때는 자유롭습니다. 폴더 구조가 지저분해도 되고, 변수명이 `tmp2`여도 나만 알면 됩니다. 주석이 한국어여도, 경로가 하드코딩되어 있어도 내 맥에서 돌아가면 그만입니다.
+
+오픈소스는 다릅니다. 누군가 README를 읽고 설치를 시도할 겁니다. 에러가 나면 이슈를 열 겁니다. 코드를 읽고 PR을 보낼 수도 있습니다. 그 "누군가"를 상상하는 순간, 코드를 보는 기준이 완전히 달라집니다.
+
+ccfg의 경우 특히 그랬습니다. Claude Code의 설정 경로는 OS마다 다르고, transcript 파일의 포맷도 버전에 따라 미묘하게 다릅니다. 내 환경에서만 테스트하던 코드가 다른 사람의 환경에서도 작동할 거라는 보장이 없었습니다.
+
+마인드셋의 전환이 필요했습니다. "이거 돌아가네" → "이걸 처음 보는 사람이 이해할 수 있나?"
+
+## 레포 정리: 생각보다 할 게 많다
+
+### 한국어에서 영어로
+
+오픈소스 준비에서 가장 큰 작업은 의외로 **언어 전환**이었습니다. 초기 개발은 자연스럽게 한국어로 진행했습니다. 주석, 변수 설명, 테스트 메시지, 에러 문자열까지 전부 한국어였습니다.
+
+글로벌 오픈소스를 목표로 하면 영어가 기본이 됩니다. 모든 Go 소스 코드의 주석과 문자열을 영어로 번역하고, README와 CONTRIBUTING도 영어 버전을 메인으로 전환했습니다. 다만 한국어 문서도 `README.ko.md`, `CONTRIBUTING.ko.md`로 병행 유지합니다. 커밋 두 개가 이 작업에 들어갔는데, 코드를 한 줄도 바꾸지 않으면서 가장 많은 파일을 수정한 커밋이었습니다.
+
+### 민감정보 제거
+
+코드 전체를 훑으며 하드코딩된 경로와 개인정보를 찾았습니다. `~/.claude`는 괜찮지만, 절대 경로로 `/Users/jeremy/...`가 박혀 있는 곳이 몇 군데 있었습니다.
+
+`git log -p`로 전체 히스토리를 검색해서 한 번이라도 커밋된 적 있는 민감 데이터를 확인했습니다. 다행히 시크릿은 없었지만, 테스트에 실제 세션 데이터가 포함되어 있어서 모의 데이터로 교체해야 했습니다.
+
+### 프로젝트 메타데이터
+
+오픈소스 프로젝트에는 코드 외에도 갖춰야 할 파일들이 있습니다:
+
+- **LICENSE** — MIT를 선택했습니다. 개인 도구이고, 가능한 한 많은 사람이 자유롭게 쓰길 바랐기 때문입니다.
+- **CODE_OF_CONDUCT.md** — 기여자 행동 강령. 작은 프로젝트라도 있으면 커뮤니티의 방향을 보여줍니다.
+- **CHANGELOG.md** — [Keep a Changelog](https://keepachangelog.com/) 형식으로, v0.1.0의 변경사항을 정리했습니다.
+- **GitHub 템플릿** — 이슈와 PR 템플릿을 `.github/ISSUE_TEMPLATE/`과 `pull_request_template.md`로 추가했습니다.
+
+`.gitignore`도 다시 점검했습니다. 바이너리, IDE 설정(`*.idea/`, `.vscode/`), OS 메타파일(`.DS_Store`, `Thumbs.db`), 환경변수 파일(`.env`)이 빠짐없이 들어가 있는지 확인했습니다.
+
+## 구조 개선
+
+### 패키지 분리
+
+초기 ccfg도 나름의 구조가 있었지만, 오픈소스 준비를 하면서 더 명확하게 다듬었습니다. 최종 구조는 이렇습니다:
+
+```
+ccfg/
+├── cmd/ccfg/       ← CLI 진입점
+├── internal/
+│   ├── merger/     ← 설정 파일 병합 로직
+│   ├── model/      ← 공유 타입 정의 (ScanResult, ConfigCategory 등)
+│   ├── parser/     ← JSON/JSONC 파싱, Markdown 렌더링, 에이전트/스킬 메타데이터
+│   ├── scanner/    ← 설정 파일 경로 탐색·스캔
+│   ├── tui/        ← Bubbletea 모델·뷰·스타일·키바인딩
+│   ├── usage/      ← 도구/에이전트/스킬 사용량 수집·랭킹
+│   └── watcher/    ← fsnotify 기반 파일 감시
+├── docs/           ← PRD, 로드맵
+└── main.go
+```
+
+Go의 `internal/` 패키지 컨벤션을 활용했습니다. `internal/` 아래의 코드는 외부에서 import할 수 없으므로, 공개 API와 내부 구현의 경계가 명확해집니다.
+
+가장 큰 변화는 TUI 코드와 비즈니스 로직의 분리였습니다. 이전에는 `Update()` 함수 안에서 직접 파일을 읽고 파싱했는데, `scanner`, `parser`, `usage` 패키지로 분리하면서 각각을 독립적으로 테스트할 수 있게 됐습니다.
+
+### 에러 처리 재점검
+
+개인 프로젝트에서는 `if err != nil { panic(err) }`로 넘어가는 곳이 꽤 있었습니다. 오픈소스에서 panic은 사용자 경험을 망치는 지름길입니다.
+
+모든 에러 경로를 점검하면서 두 가지 원칙을 세웠습니다:
+
+- **파일이 없으면 빈 상태를 보여준다** — Claude Code를 막 설치한 사용자는 transcript가 없을 수 있습니다. 에러 대신 "No data"를 보여주는 게 맞습니다.
+- **파싱 실패는 해당 항목만 건너뛴다** — transcript의 한 줄이 깨져 있다고 전체가 멈추면 안 됩니다. `continue`로 다음 줄로 넘어갑니다.
+
+### 크로스 플랫폼 대응
+
+내 맥에서만 돌리던 코드를 Linux에서도 돌아가게 만드는 작업입니다. Claude Code의 설정 경로가 OS마다 다르기 때문에, 경로 탐색 로직에 `runtime.GOOS` 분기를 적용했습니다:
+
+```go
+func ManagedPaths() (string, []FileEntry) {
+    var base string
+    switch runtime.GOOS {
+    case "darwin":
+        base = "/Library/Application Support/ClaudeCode"
+    case "linux":
+        base = "/etc/claude-code"
+    default:
+        return "", nil
+    }
+    return base, []FileEntry{
+        {RelPath: "managed_settings.json", Description: "Managed settings", Category: model.CategorySettings},
+        {RelPath: "policies.json", Description: "Policy file", Category: model.CategoryPolicy},
+    }
+}
+```
+
+Managed, User, Project 세 스코프 각각에 대해 경로를 반환하는 함수를 분리해서, 새로운 OS를 지원할 때 해당 함수에 `case`만 추가하면 되는 구조입니다.
+
+## 새로 추가된 기능들
+
+오픈소스 준비를 하면서 기능도 상당히 다듬었습니다. 지난 글 이후로 추가된 주요 기능들입니다.
+
+### fsnotify 파일 감시
+
+가장 실용적인 추가 기능입니다. 이전에는 설정 파일을 수정하면 ccfg를 재시작해야 변경이 반영됐습니다. 이제 `internal/watcher` 패키지가 [fsnotify](https://github.com/fsnotify/fsnotify)로 파일 변경을 감지하고, 자동으로 리스캔합니다. 설정을 고치면서 ccfg를 옆에 띄워두면 실시간으로 반영되는 걸 볼 수 있습니다.
+
+### 에이전트 캐릭터 카드 & 스킬 어빌리티 카드
+
+Claude Code의 커스텀 에이전트(`.claude/agents/`)와 스킬(`.claude/skills/`)의 메타데이터를 파싱해서, 게임 캐릭터 카드 스타일의 UI로 보여줍니다. 에이전트 이름, 역할, 사용 가능한 도구 등이 한눈에 들어오는 카드 레이아웃입니다.
+
+### 가상 노드 트리
+
+`settings.json` 안의 hooks와 MCP 서버 설정을 파싱해서 트리 뷰에 가상 노드로 표시합니다. 파일 하나에 뭉쳐있던 복잡한 설정 구조를 트리 형태로 펼쳐서 볼 수 있게 됐습니다.
+
+### 사용량 랭킹 고도화
+
+지난 글에서 소개한 SSS~F 등급 시스템이 더 정교해졌습니다. 도구 랭킹뿐 아니라 **에이전트**와 **스킬** 탭이 추가되어 `1/2/3` 키로 전환할 수 있고, `s` 키로 전체/프로젝트 범위를 토글할 수 있습니다. 트리 뷰에서 `/`를 누르면 이름으로 검색하는 필터도 적용됩니다.
+
+## brew 배포: 남은 마지막 퍼즐
+
+지금 남은 건 Homebrew 배포입니다. Go 프로젝트의 배포 파이프라인은 대체로 이렇습니다:
+
+1. **GoReleaser** — 태그를 푸시하면 자동으로 멀티 플랫폼 바이너리를 빌드
+2. **GitHub Release** — 빌드된 바이너리를 릴리즈에 첨부
+3. **Homebrew Tap** — `homebrew-tap` 레포를 만들고 formula를 등록
+
+`.goreleaser.yml`은 이미 준비되어 있습니다:
+
+```yaml
+builds:
+  - main: ./cmd/ccfg
+    binary: ccfg
+    env: [CGO_ENABLED=0]
+    goos: [darwin, linux]
+    goarch: [amd64, arm64]
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+      - -X main.commit={{.Commit}}
+
+brews:
+  - repository:
+      owner: jeremy-kr
+      name: homebrew-tap
+    homepage: https://github.com/jeremy-kr/ccfg
+    description: TUI dashboard for viewing Claude Code config files
+    license: MIT
+```
+
+`ldflags`로 빌드 시점의 버전과 커밋 해시를 바이너리에 주입합니다. `ccfg --version`으로 확인할 수 있게 한 기능입니다. GitHub Actions 릴리즈 워크플로우도 이미 세팅되어 있어서, `git tag v0.1.0 && git push --tags`만으로 전체 파이프라인이 돌아갑니다.
+
+설정이 완료되면 사용자는 `brew install jeremy-kr/tap/ccfg` 한 줄로 설치할 수 있습니다. 소스를 클론하고 `go build`하는 것보다 진입 장벽이 훨씬 낮습니다.
+
+## 오픈소스 공개 체크리스트
+
+프로젝트를 공개하기 전에 확인한 항목들입니다. 비슷한 여정을 준비하는 분들께 참고가 되길 바랍니다.
+
+- [x] **README.md** — 영문 메인 + 한국어 버전 (`README.ko.md`)
+- [x] **LICENSE** — MIT 라이선스
+- [x] **CONTRIBUTING.md** — 영문 + 한국어 기여 가이드
+- [x] **CODE_OF_CONDUCT.md** — 기여자 행동 강령
+- [x] **CHANGELOG.md** — Keep a Changelog 형식
+- [x] **CI/CD** — GitHub Actions 릴리즈 자동화 워크플로우
+- [x] **패키지 구조** — `internal/` 기반 7개 패키지 분리
+- [x] **코드 영문화** — 주석, 문자열, 테스트 메시지 전수 번역
+- [x] **민감정보 제거** — 하드코딩 경로, 실제 데이터 정리
+- [x] **에러 처리** — panic 제거, 우아한 실패
+- [x] **크로스 플랫폼** — macOS, Linux 지원 (`runtime.GOOS` 분기)
+- [x] **GoReleaser** — 멀티 플랫폼 바이너리 빌드 설정
+- [ ] **Homebrew Tap** — 토큰 설정 및 실제 배포 테스트
+
+체크리스트의 거의 전부가 채워졌습니다. 남은 건 Homebrew tap 토큰 연동과 실제 배포 테스트뿐입니다.
+
+## 돌아보며
+
+오픈소스 준비 과정에서 가장 많이 느낀 건, 이 작업 자체가 코드 품질을 올리는 강력한 도구라는 점입니다.
+
+"다른 사람이 이 코드를 읽을 거야"라는 전제가 생기면 자연스럽게 변수명을 고치고, 에러 처리를 보강하고, 문서를 쓰게 됩니다. 특히 한국어 주석을 영어로 옮기는 작업은 단순 번역이 아니었습니다. 주석을 다시 쓰면서 "이 함수가 정말 이 이름에 맞는 일을 하고 있나?"를 재검토하는 계기가 됐습니다.
+
+또 하나는, 완벽을 기다리면 영원히 공개하지 못한다는 것. ccfg는 아직 부족한 부분이 많습니다. README에 스크린샷도 아직 TODO이고, Windows 지원도 미흡합니다. 하지만 v0.1.0은 "최소한으로 쓸 수 있는 버전"이면 충분합니다. 나머지는 이슈와 PR로 채워나가면 됩니다.
+
+사이드 프로젝트를 오픈소스로 만드는 건 코드를 쓰는 것과 다른 종류의 작업입니다. 코딩보다 정리, 문서화, 번역, "다른 사람의 시선"이 더 많은 시간을 차지합니다. 하지만 그 과정을 거치고 나면, 프로젝트가 확실히 한 단계 성숙해집니다.
+
+brew 배포까지 마치면 다음 글에서 공개 소식을 전하겠습니다.
