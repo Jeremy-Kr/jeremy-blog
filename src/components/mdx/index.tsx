@@ -103,4 +103,16 @@ export const mdxComponents: MDXComponents = {
     />
   ),
   hr: () => <div className="rainbow-bar my-8 h-[2px] rounded-full" />,
+  table: (props) => (
+    <div className="my-6 overflow-x-auto">
+      <table className="w-full border-collapse text-sm" {...props} />
+    </div>
+  ),
+  thead: (props) => <thead className="border-border border-b" {...props} />,
+  th: (props) => (
+    <th className="px-4 py-2 text-left font-semibold" {...props} />
+  ),
+  td: (props) => (
+    <td className="border-border/50 border-t px-4 py-2" {...props} />
+  ),
 };
