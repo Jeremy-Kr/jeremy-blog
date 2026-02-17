@@ -1,0 +1,429 @@
+---
+title: 'Claude Code Agents & Skills Workflow'
+description: 'How I built a custom agent and skill-based workflow in Claude Code across three projects.'
+date: '2026-02-17'
+tags: ['Claude Code', 'AI', 'Workflow']
+---
+
+## Introduction
+
+When I first used Claude Code, it was a simple coding assistant. Ask a question, get code, paste it in. But across three projects, the way I develop with AI changed completely.
+
+This post traces my journey from a personal mobile app (Project A) to a company team project (Project B) to a personal full-stack app (Project C), building an **agent and skill-based workflow** along the way.
+
+---
+
+## Project A — Birth of the Pattern
+
+### Background
+
+The first project was a React Native (Expo) mobile app. iOS/Android native code, state management, E2E testing — the scope was wide for a solo developer, and asking Claude Code to "just handle everything" led to scattered context and inconsistent output.
+
+### The Core Idea: Role Separation
+
+The solution was simple. **Split roles like a human team.** I started creating agent definition files in `.claude/agents/`:
+
+```
+.claude/agents/
+├── orchestrator.md        # Team lead — never writes code
+├── pm-po.md               # Product — writes spec documents
+├── designer.md            # Design — UI/UX planning
+├── rn-developer.md        # RN dev — cross-platform
+├── rn-ios-developer.md    # iOS specialist
+├── rn-android-developer.md # Android specialist
+├── qa-engineer.md         # QA — testing & validation
+├── backend-developer.md   # Backend
+└── medical-reviewer.md    # Domain expert (medical info validation)
+```
+
+Nine agents. Looks like a lot, but each had clear, non-overlapping responsibilities.
+
+### The Gate System
+
+Right after creating agents, I hit a problem: **agents would skip ahead without confirmation.** They'd start writing code before specs were even finished.
+
+The solution was a **Gate system**:
+
+```
+Gate 1: PM spec complete → user confirmation
+Gate 2: Design complete → user confirmation
+Gate 3: Implementation complete → lint/build/test pass
+Gate 4: QA complete → Ralph Loop (max 3 iterations)
+```
+
+The orchestrator managed each gate, blocking progression without user approval.
+
+### Enforcing with Hooks
+
+Even with gates defined, agents would sometimes "ignore" them. So I started **physically enforcing** rules with hooks:
+
+```
+.claude/hooks/
+├── enforce-orchestrator.ts   # Force all requests through orchestrator
+├── pre-write-check.ts        # Block .env edits, warn on file size
+├── pre-commit-all-checks.ts  # Enforce lint + tsc before commits
+├── post-write-format.ts      # Auto-format after file writes
+├── inject-spec-context.ts    # Auto-inject relevant specs to agents
+├── task-scope-limiter.ts     # Limit exploration tasks to 15 calls
+├── task-quality-gate.ts      # Validate lint on task completion
+└── teammate-idle-check.ts    # Nudge idle agents back to work
+```
+
+`enforce-orchestrator` was a game changer. Every user request was forced through the orchestrator, completely preventing agents from stepping outside their role.
+
+### Skills: Reusable Knowledge
+
+To eliminate the inefficiency of repeatedly explaining the same conventions to agents, I introduced **skills**:
+
+```
+.agents/skills/
+├── react-native-conventions/  # Pressable, FlatList, SafeArea patterns
+├── expo-conventions/          # SDK 54, Config Plugin, Router 6
+├── zustand-patterns/          # Store creation, selectors (infinite loop prevention!)
+├── detox-e2e-testing/         # replaceText vs typeText, testID rules
+├── biome/                     # Linting, formatting config
+├── code-conventions/          # Naming, import order, testID
+├── plan-first/                # Numbered planning, [CONFIRM] markers
+├── ask-questions-if-underspecified/ # Ask when uncertain
+└── ci-fix/                    # CI failure category-based fix guide
+```
+
+Skills were auto-injected into agent prompts, enabling consistent code generation without repeated explanations.
+
+### Lessons from Project A
+
+- **The orchestrator must never write code** — mixing roles degrades quality
+- **Without gates, agents run wild** — checkpoints are essential
+- **Hooks = law, prompts = guidelines** — critical rules must be enforced by hooks
+- **Skills are the key to reuse** — define once, benefit every agent
+
+---
+
+## Project B — Refining the System
+
+### Background
+
+The second was a company team project (Next.js monorepo). I brought the patterns from Project A but had to adapt for **team environments and scale**.
+
+### Global vs Project Separation
+
+In Project A, all agents lived inside the project. Starting the company project made me realize — PM, Designer, QA, and Architect play **the same role regardless of project**.
+
+```
+~/.claude/agents/          # Global — process agents
+├── pm.md                  # Shared across all projects
+├── architect.md           # Architecture design (new!)
+├── designer.md            # UI/UX
+└── qa.md                  # Quality assurance
+
+/project/.claude/agents/   # Project — technical agents
+├── orchestrator.md        # Project-specific orchestrator
+├── ts-developer.md        # Tailored to project stack
+└── ...
+```
+
+This separation meant starting a new project only required defining **technical agents** — process agents were reused as-is.
+
+### Adding the Architect Agent
+
+In Project A, specs went straight from PM to Designer. In complex projects, skipping architecture decisions led to rewrites during implementation. So I added an **Architect agent**:
+
+```
+Gate 1:   PM spec → user confirmation
+Gate 1.5: Architecture design → user confirmation  ← new!
+Gate 2:   Design → user confirmation
+Gate 3:   Implementation → lint/build/test
+Gate 4:   QA
+```
+
+The Architect wrote ADRs (Architecture Decision Records) and defined component interfaces and API contracts. The principle: **produce documents only, never code**.
+
+### Meta-Agents: Agents That Create Agents
+
+Assembling an agent team from scratch for every project became tedious, so I built an **agent team generator**:
+
+```markdown
+# agent-team-generator.md
+
+Step 1: Analyze CLAUDE.md → tech stack, structure, domain
+Step 2: Propose roles → user confirmation
+Step 3: Link global agents (PM, QA, etc.) + create project agents
+Step 4: Generate orchestrator (gates, file ownership matrix)
+Step 5: Generate governance hooks (optional)
+Step 6: Validate (check ownership overlaps/gaps)
+```
+
+Invoking the `/generate-team` skill analyzed CLAUDE.md and **auto-generated a project-specific agent team**.
+
+### Agent Teams: The Game Changer
+
+Midway through Project B, Claude Code shipped **Agent Teams**. Until then, the orchestrator called subagents that could only report results upward. Subagents couldn't talk to each other.
+
+Agent Teams were fundamentally different. Each teammate ran as an **independent Claude Code instance**, and teammates could **message each other directly**.
+
+```
+Subagent approach (before)       Agent Teams approach (after)
+
+    Orchestrator                     Team Leader
+    ├→ Agent A → report up          ├→ Teammate A ←→ Teammate B
+    ├→ Agent B → report up          ├→ Teammate B ←→ Teammate C
+    └→ Agent C → report up          └→ Teammate C ←→ Teammate A
+    (one-way, report to parent)      (bidirectional, peer-to-peer)
+```
+
+Activation was a single line in `settings.json`:
+
+```json
+{
+  "env": {
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
+  }
+}
+```
+
+With tmux split-pane mode enabled, each teammate worked in **its own terminal pane** — visible in real time.
+
+**Integration with the existing agent system was seamless.** Since I already had agent definition files (`orchestrator.md`, `developer.md`, etc.), the team leader simply passed them as prompts when spawning teammates. A shared Task List distributed work, and the file ownership matrix prevented conflicts.
+
+The biggest shift was **true parallelization of the implementation phase**. Previously, subagents reported results and the orchestrator redistributed — a bottleneck. With Agent Teams, frontend, backend, and test teammates worked simultaneously, asking each other directly when needed:
+
+```
+Frontend teammate → Backend teammate: "What's the auth API response format?"
+Backend teammate → Frontend teammate: "{ token: string, expiresAt: number }"
+```
+
+No need to go through the leader. Coordination bottleneck: eliminated.
+
+One critical setting was **Delegate Mode**. Without it, the team leader would start writing code instead of waiting for teammates. Delegate Mode restricted the leader to coordination-only tools, enforcing the "orchestrator never writes code" principle at the system level.
+
+### Session Continuity
+
+Context loss across sessions was a serious problem for long-running tasks. Two systems solved this:
+
+**1. HANDOFF.md — Automatic Session Handoff**
+
+```markdown
+# Session Handoff
+
+## Git Status
+
+- Branch: feat/auth
+- Last commit: abc1234 feat(auth): connect login API
+- Changes: 2 staged, 1 unstaged
+
+## Completed This Session
+
+- Login form implementation
+- API client setup
+
+## Remaining Work
+
+- Token refresh logic
+- Error handling
+
+## Next Session Prompt
+
+> "Start with implementing the token refresh logic"
+```
+
+A hook automatically captured Git state on session end and injected it at the next session start.
+
+**2. progress.txt — Real-time Context Tracking**
+
+```markdown
+Goal: Implement auth system
+Constraints: JWT-based, refresh token rotation
+Completed: Login API, token storage
+Next: Token refresh interceptor
+```
+
+This was updated continuously during sessions, ensuring critical information survived even when the context window was compressed.
+
+### Lessons from Project B
+
+- **Global/project separation is essential** — reuse process, customize tech
+- **Without an architect, implementations get scrapped** — the value of intermediate gates
+- **Meta-agents save time** — team generation automation
+- **Agent Teams = true parallelization** — from one-way reporting to bidirectional collaboration
+- **Delegate Mode is a must** — block the leader from implementing at the system level
+- **Without session continuity, every session starts from zero** — HANDOFF + progress system
+
+---
+
+## Project C — Full Automation
+
+### Background
+
+The third project was a Next.js full-stack app with **five independent calculation engines** spanning a complex domain. It absorbed every lesson from the previous two projects into the most sophisticated workflow yet.
+
+### Domain Expert Agents
+
+The standout feature of this project was **domain expert agents**. Each calculation engine got a dedicated agent with deep domain knowledge:
+
+```
+.claude/agents/
+├── orchestrator.md          # Team leader
+├── frontend-developer.md    # Next.js 15 + i18n + Zustand
+├── engine-developer.md      # Shared types + AI interpreter
+├── domain-expert-1.md       # Engine 1 specialist
+├── domain-expert-2.md       # Engine 2 specialist
+├── domain-expert-3.md       # Engine 3 specialist
+├── domain-expert-4.md       # Engine 4 specialist
+└── domain-expert-5.md       # Engine 5 specialist
+```
+
+Each expert agent's definition contained **core concepts, calculation rules, edge cases, and validation checkpoints** for its domain. For example, one expert's definition included:
+
+```markdown
+## Critical Validation Points
+
+- Calendar conversion accuracy (leap months, midnight adjustment)
+- Solar term-based month determination
+- Midnight boundary edge cases
+- Element balance calculation
+- Cycle counting
+```
+
+Embedding domain knowledge directly into agents dramatically reduced **domain-specific mistakes that general AI is prone to**.
+
+### File Ownership Matrix
+
+As agents multiplied, **multiple agents touching the same files** became a conflict problem. The solution was **explicit file ownership**:
+
+| Directory            | Owner              |
+| -------------------- | ------------------ |
+| `apps/web/`          | Frontend developer |
+| `packages/core/`     | Engine developer   |
+| `packages/engine-1/` | Domain expert 1    |
+| `packages/engine-2/` | Domain expert 2    |
+| `packages/i18n/`     | Frontend developer |
+| Root config files    | Orchestrator       |
+
+Each agent's definition file stated **"do not modify outside this directory"**. The orchestrator monitored compliance and blocked violations.
+
+### 1000-Point Audit System
+
+Beyond QA, I built an audit system that **quantitatively measured domain accuracy**:
+
+```
+Score breakdown (1000 points max)
+├── Core algorithm accuracy    350 pts
+├── Data tables/constants      250 pts
+├── Domain completeness        200 pts
+├── Edge case handling         100 pts
+└── Validation reliability     100 pts
+```
+
+Each of the five engines was audited against these criteria and scored:
+
+```
+Engine 1  ████████████████████████████  872/1000 (Near-Production)
+Engine 5  ██████████████████████████    810/1000 (Near-Production)
+Engine 3  █████████████████████████     805/1000 (Near-Production)
+Engine 2  ████████████████████████      790/1000 (MVP)
+Engine 4  ██████████████████████        735/1000 (MVP)
+─────────────────────────────────────────────
+Average: 802.4/1000 | All tests: 302/302 passing
+```
+
+Audit reports included concrete improvement items at P0 (critical) and P1 (high) priority, making it always clear **what to fix next**.
+
+### Production Skills
+
+Skills matured significantly in Project C. No longer just convention collections — they contained **specific error prevention and design patterns**:
+
+```
+.agents/skills/
+├── frontend-design/           # Anti-"AI slop" — bold design principles
+├── tailwind-design-system/    # v4 design token architecture
+└── tailwind-v4-shadcn/        # 8 error preventions + 4-step architecture
+    ├── SKILL.md
+    ├── references/
+    │   ├── architecture.md
+    │   ├── dark-mode.md
+    │   ├── common-gotchas.md
+    │   └── migration-guide.md
+    └── templates/             # Ready-to-use config files
+```
+
+The `tailwind-v4-shadcn` skill in particular contained **8 error prevention rules validated in actual production deployments**, preventing the same mistakes from recurring.
+
+### Parallel Execution Pipeline
+
+Everything came together in the final pipeline:
+
+```
+User request
+    ↓
+Orchestrator (creates exec_plan)
+    ↓
+Gate 1: PM spec → user confirmation
+    ↓
+Gate 1.5: Architecture → user confirmation
+    ↓
+Gate 2: Design → user confirmation
+    ↓
+Gate 3: Implementation (parallel!)
+    ├── Frontend dev ──→ apps/web/
+    ├── Engine dev ────→ packages/core/
+    ├── Domain expert 1 → packages/engine-1/
+    ├── Domain expert 2 → packages/engine-2/
+    ├── Domain expert 3 → packages/engine-3/
+    ├── Domain expert 4 → packages/engine-4/
+    └── Domain expert 5 → packages/engine-5/
+    ↓
+Gate 4: QA (Ralph Loop, max 3 iterations)
+    ↓
+Audit system (1000-point score)
+```
+
+Design phases ran sequentially (information must accumulate), while implementation ran in **true parallel via Agent Teams** (each teammate as an independent instance, file ownership isolated). This was the moment Agent Teams, introduced in Project B, truly shone — seven teammates working simultaneously in their own tmux split panes, communicating directly when needed. It was literally watching an AI team at work.
+
+---
+
+## Lessons Across Three Projects
+
+### 1. Agents Are More Than "Prompt Splitting"
+
+I initially introduced agents to break up long prompts. But the real value was **isolation of responsibility**. When agents focused only on their domain, output quality improved dramatically.
+
+### 2. Hooks Are Guardrails
+
+The difference between writing "don't do this" in a prompt and physically blocking it with a hook is night and day. Critical rules **must be enforced by hooks**.
+
+| Rule                   | Prompt                           | Hook                             |
+| ---------------------- | -------------------------------- | -------------------------------- |
+| Prevent .env edits     | "Please don't modify .env"       | `pre-write-check` → blocked      |
+| Lint before commit     | "Please run lint"                | `pre-commit-checks` → enforced   |
+| Route via orchestrator | "Please go through orchestrator" | `enforce-orchestrator` → blocked |
+
+### 3. Skills Create Compound Interest on Knowledge
+
+When you distill patterns from one project into skills, the next project **starts with validated knowledge**. The Zustand patterns from Project A found their way into Project C's frontend skills.
+
+### 4. Session Continuity Is Underrated
+
+One of AI coding's biggest weaknesses is **amnesia between sessions**. After introducing the HANDOFF + progress system, picking up where the previous session left off became seamless.
+
+### 5. Start Incrementally
+
+You don't need 8 agents + 9 hooks + 9 skills from day one. Recommended progression:
+
+```
+Step 1: Write CLAUDE.md → document project conventions
+Step 2: Orchestrator + 1-2 specialist agents
+Step 3: 2-3 core hooks (formatting, lint enforcement)
+Step 4: Extract repeated knowledge into skills
+Step 5: Gate system for quality management
+Step 6: Session continuity system
+```
+
+---
+
+## Conclusion
+
+Across three projects, I realized that **"how you delegate to AI"** is itself an engineering problem.
+
+A good agent system is like a good team structure. Clear roles, defined communication channels, quality gates, and accumulated knowledge. Ultimately, designing an AI workflow is no different from **designing software architecture**.
+
+Now, the first thing I do when starting a new project isn't writing code. I write CLAUDE.md, define agents, and design gates. Once that's in place, AI stops being a code generator and becomes a **real teammate**.
