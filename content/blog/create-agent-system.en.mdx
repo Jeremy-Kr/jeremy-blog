@@ -1,0 +1,268 @@
+---
+title: 'Packaging Lessons from Three Projects into One npm Package'
+description: 'Agent workflows in a single npx command. The design philosophy, presets, and doc-spec validation behind create-agent-system.'
+date: '2026-02-22'
+tags: ['Claude Code', 'AI', 'Open Source', 'Workflow']
+---
+
+## Introduction
+
+In the [previous post](/blog/agents-skills-workflow), I covered how I built an agent system across three projects. Orchestrator, file ownership matrix, gate system, skill packages — things I had to build repeatedly for every project.
+
+The problem was that every time I started a new project, I had to **rebuild this system from scratch**. Manually writing 8 agent definition files, copying skills over, setting up file ownership. When setting up Project C took half a day, I thought — "What if I turned this into a tool?"
+
+That's how **create-agent-system** was born.
+
+---
+
+## The Problem: "Starting from Zero Every Time"
+
+The workflow from the previous post had evolved into something fairly sophisticated. But that sophistication was also the barrier to entry.
+
+Here's what starting a new project required:
+
+1. **Writing 8 agent definition files** — PO/PM, Architect, CTO, Designer, Test Writer, Frontend Dev, Backend Dev, QA Reviewer. Each needed its role, owned directories, and skills specified.
+2. **Copy-pasting skill files** — Copying proven skills from previous projects, then modifying them for the new project's tech stack.
+3. **Manually setting up the file ownership matrix** — Mapping which agent owns which directory.
+4. **Writing CLAUDE.md** — Project conventions, tech stack, workflow rules.
+5. **Configuring settings.json** — Enabling Agent Teams, model settings.
+
+On top of that, there was a more fundamental issue. Claude Code's official documentation changes rapidly. New fields get added to agent definitions, skill formats change. **Agent prompts written a month ago would already be outdated.** There was no way to verify whether settings copied from a previous project still matched the latest spec.
+
+---
+
+## The Solution: Scaffold Once, Stay Up to Date Forever
+
+The core philosophy of create-agent-system can be summed up in one sentence:
+
+> **Scaffold once, stay up to date forever.**
+
+Traditional scaffolders (create-react-app, create-next-app, etc.) follow a "generate and forget" model. They produce initial boilerplate, but when the framework evolves, the generated code stays frozen. Users are on their own to keep up.
+
+create-agent-system takes a different approach. **It treats the official documentation as the SSOT (Single Source of Truth).** The bundled `/sync-spec` skill compares your current configuration against the latest Claude Code documentation. Not just at generation time — the structure supports **ongoing** spec validation.
+
+---
+
+## Try It in 30 Seconds
+
+Installation and execution is a single line:
+
+```bash
+npx create-agent-system
+```
+
+Interactive mode launches and asks about your preset, project name, and whether to auto-launch Claude Code. Answer the prompts and you get a structure like this:
+
+```text
+your-project/
+├── CLAUDE.md
+└── .claude/
+    ├── agents/
+    │   ├── po-pm.md
+    │   ├── architect.md
+    │   ├── cto.md
+    │   ├── designer.md
+    │   ├── test-writer.md
+    │   ├── frontend-dev.md
+    │   ├── backend-dev.md
+    │   └── qa-reviewer.md
+    ├── skills/
+    │   ├── scoring/SKILL.md
+    │   ├── visual-qa/SKILL.md
+    │   ├── tdd-workflow/SKILL.md
+    │   ├── adr-writing/SKILL.md
+    │   ├── ticket-writing/SKILL.md
+    │   ├── design-system/SKILL.md
+    │   ├── cr-process/SKILL.md
+    │   └── sync-spec/SKILL.md
+    └── settings.json
+```
+
+The above is based on the full-team preset. If you choose solo-dev, only 5 agents and 5 skills are generated.
+
+For CI/CD or automation, non-interactive mode is also supported:
+
+```bash
+npx create-agent-system --preset solo-dev --project-name my-app --yes
+```
+
+Add the `--dry-run` flag to preview which files would be created without actually generating them.
+
+---
+
+## The Preset System
+
+Not every project needs all 8 agents and 8 skills. When I applied the full-team preset to this blog and saw the CTO leaving review comments on README edits, I realized — CTO reviews and EPIC-based development are overkill for a solo side project. So I created three presets.
+
+| Preset     | Scale  | Agents | Skills | QA Mode  | Visual QA | EPIC-Based |
+| ---------- | ------ | ------ | ------ | -------- | --------- | ---------- |
+| solo-dev   | small  | 5      | 5      | lite     | Level 1   | No         |
+| small-team | medium | 8      | 8      | standard | Level 2   | Yes        |
+| full-team  | large  | 8      | 8      | standard | Level 3   | Yes        |
+
+**solo-dev** is for solo developers. It drops Architect, CTO, and Designer, activating only 5 agents: PO/PM, Test Writer, Frontend Dev, Backend Dev, and QA Reviewer. QA runs in a simplified lite mode.
+
+**small-team** is for team-scale development. All 8 agents are activated, with CTO review cycles (up to 5 rounds), EPIC-based workflows, and Level 2 Visual QA.
+
+**full-team** is for large-scale projects. Agent and skill composition is the same as small-team, but Visual QA is elevated to Level 3 (the strictest).
+
+Presets are **opinionated defaults**. Tools without opinions are hard to use. If you say "pick which agents to activate," a first-time user is lost. Presets propose a sensible default configuration, and customizing from there is much faster.
+
+---
+
+## Agents and Skills
+
+### 8 Agents
+
+| Agent        | Role           | Key Responsibility                                  |
+| ------------ | -------------- | --------------------------------------------------- |
+| PO/PM        | Planner        | Spec writing, ticket management, prioritization     |
+| Architect    | Designer       | ADR writing, component interface definition         |
+| CTO          | Tech Lead      | Code review, technical direction                    |
+| Designer     | UI/UX Designer | UI/UX design, design system management              |
+| Test Writer  | Test Author    | TDD-based test code writing                         |
+| Frontend Dev | Frontend       | UI implementation, state management                 |
+| Backend Dev  | Backend        | API, database, business logic                       |
+| QA Reviewer  | QA             | Final validation, visual QA, score-based evaluation |
+
+The role separation refined across three projects in the previous post is reflected here directly. Each agent's template is rendered according to the project's tech stack (package manager, framework, etc.).
+
+### 8 Skills
+
+| Skill          | Purpose                                                 |
+| -------------- | ------------------------------------------------------- |
+| scoring        | Quantitative code quality assessment (1000-point scale) |
+| visual-qa      | Visual QA checklist                                     |
+| tdd-workflow   | Test-driven development workflow                        |
+| adr-writing    | Architecture Decision Record writing                    |
+| ticket-writing | Ticket/issue writing standards                          |
+| design-system  | Design system conventions                               |
+| cr-process     | Code review process                                     |
+| sync-spec      | Official documentation sync validation                  |
+
+Previously, I copied these skills between projects manually. Now, picking a preset automatically installs the matching skills.
+
+---
+
+## Intersection Skill Computation
+
+A subtle problem came up while designing the agent system. **Each agent has different default skills, and each preset activates different skills.** How do you combine them?
+
+Each agent has a defined default skill list:
+
+```text
+PO/PM       → scoring, ticket-writing, cr-process
+Architect   → scoring, adr-writing
+CTO         → scoring
+Designer    → design-system, visual-qa, scoring
+Test Writer → tdd-workflow, scoring
+Frontend    → visual-qa, scoring
+Backend     → scoring
+QA Reviewer → visual-qa, scoring
+```
+
+And each preset activates different skills. solo-dev enables 5 (scoring, tdd-workflow, ticket-writing, cr-process, sync-spec), while small-team and full-team enable all 8.
+
+The skills ultimately assigned to an agent are the **intersection of both sets**:
+
+```text
+Agent's final skills = Agent default skills ∩ Preset active skills
+```
+
+Why intersection? Initially, I implemented it as a union. The thinking was to give agents everything they could use. The results were disastrous — the Backend agent in the solo-dev preset started outputting visual-qa checklists and demanding screenshots. **Unnecessary skills were polluting the agent's context.** Switching to intersection eliminated this problem.
+
+Here's a concrete example:
+
+```text
+solo-dev preset's active skills:
+  {scoring, tdd-workflow, ticket-writing, cr-process, sync-spec}
+
+Designer's default skills:
+  {design-system, visual-qa, scoring}
+
+Intersection result → Skills assigned to Designer:
+  {scoring}
+
+(design-system and visual-qa are excluded because the preset doesn't activate them)
+```
+
+This intersection computation is implemented in a single line of code:
+
+```typescript
+function computeAgentSkills(agentName, presetSkills) {
+  const defaults = AGENT_DEFAULT_SKILLS[agentName];
+  return defaults.filter((skill) => presetSkills.includes(skill));
+}
+```
+
+Simple but effective. Agents receive **only the skills that are meaningful in that preset's context**.
+
+---
+
+## doc-spec-Based Validation
+
+The biggest enemy of an agent system is **time**. When Claude Code's official spec changes, available fields in agent definitions, skill formats, and settings.json structure can all shift. Settings that were valid at generation time can become outdated a month later.
+
+I experienced this firsthand. I copied agent definitions from Project B to Project C, unaware that an `allowed_tools` field had been added to the skill format in the interim. The agent couldn't load skills, and I spent hours debugging. That's why I built the `/sync-spec` skill. Run it inside Claude Code, and it fetches the latest official documentation via Context7 MCP and compares it against your current configuration:
+
+```bash
+claude
+> /sync-spec
+```
+
+sync-spec validates:
+
+- Whether agent definition file fields are valid per the latest spec
+- Whether skill formats match the currently supported structure
+- Whether settings.json structure is correct
+- Whether new features or fields have been added
+
+Validation results come with improvement suggestions. The philosophy of "agents keep up even when the spec changes" is embodied in this skill.
+
+A standalone `validate` command is also provided:
+
+```bash
+npx create-agent-system validate
+```
+
+This runs locally and instantly performs frontmatter validation, skill reference checks, and project structure verification. Drop it into CI to prevent broken config files from being committed.
+
+---
+
+## What I Learned While Building This
+
+### 1. Good Defaults Are the Best Documentation
+
+Pick a preset, run it, and you get a working agent system. Users can start with a sensible configuration without reading the README front to back. No matter how well you write documentation, nothing onboards as effectively as **working defaults**.
+
+### 2. Presets Are Opinions — Tools Without Opinions Are Hard to Use
+
+"We'll leave all options open" sounds flexible, but it's confusing for first-time users. Dropping CTO review and using lite QA in solo-dev is an **opinion that says "this is enough for solo development."** If the opinion is reasonable, users follow it; if not, they customize. Either way, it beats a blank canvas.
+
+### 3. Scaffolding Without Sync Is Only Half the Story
+
+If you only generate an initial setup with no ongoing maintenance, configurations go stale over time. Without the sync-spec skill, create-agent-system would have been just another "use once and discard" tool. Solving both generation and maintenance is where the real value lies.
+
+### 4. The More Agents You Have, the More Intersection Filtering Matters
+
+Initially, I tried to give agents as many skills as possible. But unnecessary skills just bloat the prompt and make agents fixate on irrelevant rules. Assigning **only the skills meaningful in that context** produced better results.
+
+### 5. There's a Right Level of Abstraction
+
+While building agent definition templates with Handlebars, I was tempted to parameterize everything — gate step counts, review rounds, file ownership rules. After the template exceeded 100 lines and output became unpredictable, I rolled it back. Parameterizing only the core variables (tech stack, model, skill list) and keeping the rest as fixed values was the right call.
+
+---
+
+## Wrapping Up
+
+Three projects' worth of lessons, packaged into one npm package:
+
+```bash
+npx create-agent-system
+```
+
+You can check out the code on GitHub: [github.com/jeremy-kr/create-agent-system](https://github.com/jeremy-kr/create-agent-system)
+
+But this is just the beginning. The current 3 presets and 8 agents/skills come from **my experience**. Other developers' experiences will differ. A React Native agent set, skills for data pipelines, presets optimized for monorepos — I'm considering expanding toward a **Community Registry** where the community can share their own patterns.
+
+An agent system built in isolation stays a personal tool. It only becomes truly complete when the community's experience is added to the mix.
