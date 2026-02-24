@@ -1,0 +1,293 @@
+---
+title: 'From Prompt Engineering to Context Engineering — Why I Redesigned My Agent System'
+description: 'I thought my agent system worked well. After reading Agent Skills for Context Engineering, I finally understood why it worked.'
+date: '2026-02-24'
+tags: ['Claude Code', 'AI', 'Context Engineering', 'Open Source']
+---
+
+## Introduction
+
+In the [first post](/blog/agents-skills-workflow), I covered how I built an agent system across three projects. In the [follow-up](/blog/create-agent-system), I packaged it into an npm tool. 8 agents, 8 skills, 3 presets. It worked well, and I was satisfied.
+
+Then I discovered a repository called [Agent Skills for Context Engineering](https://github.com/muratcankoylan/Agent-Skills-for-Context-Engineering). Reading through it, I realized something uncomfortable: **I couldn't properly explain why my own system worked.**
+
+The intersection filter that removed unnecessary skills? Intuition from experience. The gate system? Built because "agents kept going rogue." But I had no conceptual framework to explain **why** intersection beats union, or **why** quality degrades without gates.
+
+Context Engineering provided that framework. And once I looked at my agent system through that lens, the improvements became obvious. This post documents that process.
+
+---
+
+## Prompt Engineering ≠ Context Engineering
+
+The most striking sentence from [context-fundamentals](https://github.com/muratcankoylan/Agent-Skills-for-Context-Engineering/blob/main/skills/context-fundamentals/SKILL.md), the first skill in Agent Skills for Context Engineering:
+
+> **Context is the complete state available to a language model at inference time** — system instructions, tool definitions, retrieved documents, message history, and tool outputs.
+
+Prompt Engineering focuses on "how to write a good prompt." It's about crafting a single message. Context Engineering is different. It's about **designing the entire state available to the model at inference time.**
+
+What I had been doing was mostly Prompt Engineering. Polishing the wording of agent definitions, refining skill instructions, fine-tuning gate conditions. That matters, of course. But I had never viewed the **complete context** — system prompts, tool definitions, message history, tool outputs — as a single design surface.
+
+That shift in perspective changed everything.
+
+```text
+Prompt Engineering          Context Engineering
+─────────────────           ─────────────────────
+Prompt text                  Everything the model sees
+Write once, done             Continuous curation
+Message-level                Session-level
+"What to say"                "What to show, what to hide"
+```
+
+---
+
+## First Insight: Context Is a Finite Resource
+
+The core concept emphasized by context-fundamentals is the **Attention Budget**.
+
+> Context must be treated as a finite resource with diminishing marginal returns.
+
+Just because the context window grew to 128K or 200K tokens doesn't mean you should fill it. As token count grows, n² pairwise relationships form and the model's attention dilutes. More isn't better — **diminishing returns** kick in.
+
+This was the theoretical foundation for what I'd learned empirically in v0.1.0. When I loaded skills via union into agents, the Backend agent started outputting visual-qa checklists. **Irrelevant skills wasted the attention budget**, causing the agent to respond to unrelated rules.
+
+The intersection filter's effectiveness is now explained:
+
+```text
+Union (v0.1.0 initial)
+Backend agent's context:
+  system prompt + scoring + visual-qa + tdd-workflow + ...
+  → Attention latches onto visual-qa's "screenshot verification" directive
+  → Backend code review demands screenshots 🤦
+
+Intersection (v0.1.0 fix)
+Backend agent's context:
+  system prompt + scoring
+  → Attention focuses on code quality evaluation
+  → Accurate review output ✓
+```
+
+I empirically knew "intersection is better," but I only understood **why** after reading Context Engineering. The core principle is simple:
+
+> **Informativity over exhaustiveness** — include only what's needed, exclude everything else.
+
+---
+
+## Second Insight: Progressive Disclosure
+
+The second concept I couldn't ignore was **Progressive Disclosure**.
+
+> Load information only when needed. Apply at multiple levels: skill selection, document loading, tool result retrieval.
+
+In the existing system, all skill content was **injected wholesale** into agent prompts. The scoring rubric, visual-qa checklist, tdd-workflow step guide — everything entered the context the moment an agent started.
+
+The problem: agents don't need all skills simultaneously. When a QA Reviewer starts code review, the visual-qa checklist isn't relevant yet. Start with the scoring rubric, then pull in visual-qa during the visual verification phase.
+
+I restructured this into a **3-layer context loading model**:
+
+```text
+L1 — Metadata (always loaded)
+  Skill name, one-line description, activation conditions
+  e.g., "scoring — Quantitative code quality evaluation. Activate during code review or QA."
+
+L2 — Module (conditionally loaded)
+  Core guidelines, key rules
+  e.g., scoring's 1000-point rubric overview
+
+L3 — Data (loaded on demand)
+  Full checklists, detailed criteria, examples
+  e.g., scoring's per-item point breakdown
+```
+
+Previously, all skills always loaded at L3 depth. Now agents start with only L1, then progressively load L2 and L3 as context demands.
+
+**This made a real difference.** Eight skills at L3 consumed thousands of context tokens. At L1, each skill takes 2–3 lines. With lighter initial context, agents could allocate more attention budget to the actual task.
+
+---
+
+## Third Insight: Tool Consolidation
+
+From the [tool-design](https://github.com/muratcankoylan/Agent-Skills-for-Context-Engineering/blob/main/skills/tool-design/SKILL.md) skill, the **Tool Consolidation Principle**:
+
+> If a human engineer cannot definitively say which tool should be used in a given situation, an agent cannot be expected to do better.
+
+I applied this to the CLAUDE.md template. In v0.1.0, CLAUDE.md contained 12 lines of detailed Context Engineering guidelines — compression strategies, context budgets, attention placement rules, everything.
+
+The problem: CLAUDE.md is **loaded into every agent, always**. A Frontend developer doesn't need "use Anchored Summarization for context compression." That directive only matters for the orchestrator or agents managing long sessions.
+
+Applying the Tool Consolidation principle:
+
+```text
+Before (v0.1.0 CLAUDE.md) — 12 lines
+─────────────────────────────────────
+## Context Engineering
+- Context budget: trigger compression at 70-80%
+- Attention placement: critical info at start/end
+- Compression: use Anchored Summarization
+- Tool output: observation masking to save tokens
+- ... (8 more lines)
+
+After (v0.2.0 CLAUDE.md) — 3 lines
+─────────────────────────────────────
+## Context Engineering
+- See context-engineering skill for details
+- Core principle: smallest high-signal token set for maximum effect
+```
+
+**Detailed content was delegated to the context-engineering skill.** CLAUDE.md kept a one-line principle; the rest was accessed by agents that actually needed it, through the skill. This is Tool Consolidation — designing where information should live for maximum effectiveness.
+
+---
+
+## v0.2.0: Applying Concepts to Code
+
+Combining these three insights, I built create-agent-system v0.2.0. Here are the key changes:
+
+### 1. New context-engineering Skill
+
+```text
+.claude/skills/
+├── scoring/SKILL.md
+├── visual-qa/SKILL.md
+├── tdd-workflow/SKILL.md
+├── ... (existing 8 skills)
+└── context-engineering/SKILL.md    ← new
+```
+
+This skill covers Progressive Disclosure's L1→L2→L3 model, context budget management, compression strategies, and inter-agent communication patterns. The skill itself follows Progressive Disclosure — agents first see core principles, loading detailed techniques progressively as needed.
+
+### 2. Six Common Rules in CLAUDE.md Template
+
+Principles repeatedly emphasized in Agent Skills for Context Engineering became common rules in the CLAUDE.md template:
+
+```markdown
+## Common Rules
+
+1. Simplicity first — no unrequested features/abstractions
+2. Precise edits — change only what's requested
+3. Explore → plan → code → commit workflow
+4. Security — no hardcoded secrets
+5. Parallel processing — run independent tasks concurrently
+6. SSOT — official docs always win
+```
+
+The **SSOT (Single Source of Truth)** principle existed before, but it was strengthened after encountering context-fundamentals' view that "context curation is not a one-time task but continuous management."
+
+### 3. Enhanced Hooks
+
+From a Context Engineering perspective, hooks are **tools that physically prevent context pollution**:
+
+| Hook                             | Context Problem Prevented                     |
+| -------------------------------- | --------------------------------------------- |
+| Stop → code simplification       | Complex code polluting next session's context |
+| Write\|Edit → secret detection   | Secret keys leaking into context              |
+| Task → Telephone Game prevention | Information distortion in sub-agent chains    |
+
+The **Telephone Game prevention** hook was inspired by the multi-agent-patterns skill:
+
+> In orchestrator patterns, the main risk is the "telephone game" problem — responses getting distorted as they pass through the orchestrator.
+
+When the orchestrator delegates to sub-agents, original requirements get distorted. Previously, I wrote "pass the original text verbatim" in the prompt. Now a hook **validates what's actually being passed**.
+
+### 4. Unified Agent Skills Spec Format
+
+Existing skills had inconsistent formats — some had only guidelines, some only checklists, some both. Following Agent Skills for Context Engineering's skill format, I applied a **unified structure to all skills**:
+
+```markdown
+# Skill Name
+
+## When to Activate
+
+- Specific situations where this skill should activate
+
+## Guidelines
+
+- Core rules and principles
+
+## Integration
+
+- Connection points with other skills/agents
+```
+
+The "When to Activate" section is the key. By clarifying **when** an agent should reference a skill, it serves as the L1 layer in Progressive Disclosure. Agents scan all skills' "When to Activate" sections, then deep-read only the skills relevant to the current context.
+
+### 5. Concrete Compression Techniques
+
+Techniques from the context-compression skill were applied to the agent system:
+
+```text
+Anchored Summarization
+─────────────────────
+Simple summary: "Implementing auth system"
+Anchored summary: "Implementing auth system.
+  Decision: JWT + refresh rotation adopted (ADR-003).
+  Done: login API, token storage.
+  Open: how to handle race conditions in refresh interceptor."
+
+→ Preserves key decisions, done/undone status, open issues as anchors
+→ Prevents critical info loss during context compression
+```
+
+I also introduced the **Tokens-per-task** concept. Tracking "tokens consumed per task" reveals which agents use context inefficiently, providing a metric for optimizing prompts to accomplish the same work with fewer tokens.
+
+---
+
+## Why This Matters
+
+The shift from v0.1.0 to v0.2.0 in one sentence:
+
+> **From empirical optimization to principle-driven design.**
+
+v0.1.0 was the product of "this worked better in practice." Intersection filter, gate system, file ownership — all solutions found after encountering problems. It worked, but I couldn't explain **why** it worked.
+
+v0.2.0 is guided by principles. The intersection filter is an implementation of "attention budget optimization." Progressive Disclosure implements "diminishing returns management." Tool Consolidation implements "information placement optimization." With principles in place, new decisions follow a consistent framework.
+
+```text
+v0.1.0 decision process
+─────────────────────────
+Problem → try solution → verify effect → adopt
+(empirical, ad hoc, hard to explain why)
+
+v0.2.0 decision process
+─────────────────────────
+Check principles → diagnose current state → principle-based design → implement
+(systematic, consistent, clearly explainable)
+```
+
+---
+
+## Lessons Learned
+
+### 1. If You Can't Explain Why It Works, You Don't Truly Understand It
+
+I thought I'd built a sophisticated agent system across three projects. But only after reading Context Engineering did I understand the **principles** behind what I'd built. Understanding principles means you can make correct decisions in novel situations. Experience alone fails when you encounter something you haven't seen before.
+
+### 2. More Context Isn't Better
+
+Having 128K or 200K available tokens doesn't mean you should fill them. The goal is **maximum effect from the smallest set of high-signal tokens**. Every time you add a skill to an agent, ask: "Is this worth the attention budget?"
+
+### 3. Where Information Lives Matters as Much as What It Says
+
+The same directive in CLAUDE.md loads into every agent always; in a skill, it loads only for agents that need it, only when they need it. **Where** you place information determines context efficiency. Tool Consolidation is the concrete application of this principle.
+
+### 4. Good Frameworks Structure Experience
+
+Agent Skills for Context Engineering didn't teach me new techniques. It gave **names and structure** to what I was already doing empirically. The "intersection filter" became "attention budget optimization." The "gate system" became "human checkpoints in progressive disclosure." Once something has a name, you can communicate it. Once you can communicate it, you can improve it.
+
+### 5. Open Source Is Bidirectional
+
+I took a conceptual framework from Agent Skills for Context Engineering and applied it to create-agent-system. Conversely, the concrete patterns I validated across three projects (intersection filter, preset system, gates) serve as real-world cases for that framework. Theory guides practice, practice validates theory. That's the real value of open source.
+
+---
+
+## Conclusion
+
+In the [create-agent-system post](/blog/create-agent-system), my closing line was "it only becomes truly complete when community experience is added." This v0.2.0 is exactly that case. Another developer's conceptual framework met my battle-tested experience, and a better tool was born.
+
+```bash
+npx create-agent-system@latest
+```
+
+v0.2.0 includes a context-engineering skill, Progressive Disclosure-based context loading, and an enhanced hook system.
+
+GitHub: [github.com/jeremy-kr/create-agent-system](https://github.com/jeremy-kr/create-agent-system)
+
+Reference repository: [Agent Skills for Context Engineering](https://github.com/muratcankoylan/Agent-Skills-for-Context-Engineering) — an open skill collection covering Context Engineering concepts and practical patterns. Essential reading for anyone building agent systems.
