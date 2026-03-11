@@ -1,5 +1,6 @@
 import localFont from 'next/font/local';
 import { JetBrains_Mono, Space_Grotesk } from 'next/font/google';
+import { Analytics } from '@vercel/analytics/next';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { Analytics } from '@vercel/analytics/react';
